@@ -3,7 +3,16 @@ AM_CPPFLAGS = \
 	-I@builddir@/.. -I@srcdir@/../include -I@srcdir@/..
 AM_CXXFLAGS = -Wall -Wno-unknown-pragmas $(FLAG_VISIBILITY_HIDDEN)
 
-SUBDIRS = builtin booleans uf arith bv arrays datatypes quantifiers rewriterules idl
+# These are subdirs without build interdependences that can in principle
+# all be built in parallel.  They are built at the time of ".".
+PARALLEL_SUBDIRS = builtin booleans uf arith bv arrays datatypes quantifiers rewriterules idl
+# Unfortunately, to ensure that automake does the correct thing in other
+# recursive cases, e.g., make clean or make dist, we have to repeat the
+# PARALLEL_SUBDIRS in SUBDIRS---otherwise PARALLEL_SUBDIRS are being hidden
+# from automake and bad things happen.
+SUBDIRS = $(PARALLEL_SUBDIRS)
+
+# also distribute the "example" theory
 DIST_SUBDIRS = $(SUBDIRS) example
 
 noinst_LTLIBRARIES = libtheory.la
@@ -62,6 +71,12 @@ libtheory_la_LIBADD = \
 	@builddir@/quantifiers/libquantifiers.la \
 	@builddir@/rewriterules/librewriterules.la \
 	@builddir@/idl/libidl.la
+
+.PHONY: always-rebuild
+$(PARALLEL_SUBDIRS:%=%/lib%.la): always-rebuild
+	@dir="$(firstword $(subst /, ,$@))"; \
+	echo "Making all in $$dir"; \
+	$(MAKE) -C "$$dir" all
 
 EXTRA_DIST = \
 	logic_info.i \

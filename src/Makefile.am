@@ -17,7 +17,14 @@ AM_CPPFLAGS = \
 	-I@builddir@ -I@srcdir@/include -I@srcdir@
 AM_CXXFLAGS = -Wall -Wno-unknown-pragmas $(FLAG_VISIBILITY_HIDDEN)
 
-SUBDIRS = lib options expr util context theory prop decision smt printer proof . parser compat bindings main
+# These are subdirs without build interdependences that can in principle
+# all be built in parallel.  They are built at the time of ".".
+PARALLEL_SUBDIRS = context prop decision smt printer proof
+# Unfortunatey, to ensure that automake does the correct thing in other
+# recursive cases, e.g., make clean or make dist, we have to repeat the
+# PARALLEL_SUBDIRS in SUBDIRS---otherwise PARALLEL_SUBDIRS are being hidden
+# from automake and bad things happen.
+SUBDIRS = lib options expr util theory . $(PARALLEL_SUBDIRS) parser compat bindings main
 
 lib_LTLIBRARIES = libcvc4.la
 if HAVE_CXXTESTGEN
@@ -39,8 +46,6 @@ libcvc4_la_LIBADD = \
 	@builddir@/context/libcontext.la \
 	@builddir@/proof/libproof.la \
 	@builddir@/prop/libprop.la \
-	@builddir@/prop/minisat/libminisat.la \
-	@builddir@/prop/bvminisat/libbvminisat.la \
 	@builddir@/printer/libprinter.la \
 	@builddir@/smt/libsmt.la \
 	@builddir@/theory/libtheory.la \
@@ -52,8 +57,6 @@ libcvc4_noinst_la_LIBADD = \
 	@builddir@/context/libcontext.la \
 	@builddir@/proof/libproof.la \
 	@builddir@/prop/libprop.la \
-	@builddir@/prop/minisat/libminisat.la \
-	@builddir@/prop/bvminisat/libbvminisat.la \
 	@builddir@/printer/libprinter.la \
 	@builddir@/smt/libsmt.la \
 	@builddir@/theory/libtheory.la \
@@ -70,6 +73,12 @@ if CVC4_USE_GLPK
 libcvc4_la_LIBADD += $(GLPK_LIBS)
 libcvc4_noinst_la_LIBADD += $(GLPK_LIBS)
 endif
+
+.PHONY: always-rebuild
+$(PARALLEL_SUBDIRS:%=%/lib%.la): always-rebuild
+	@dir="$(firstword $(subst /, ,$@))"; \
+	echo "Making all in $$dir"; \
+	$(MAKE) -C "$$dir" all
 
 CLEANFILES = \
 	svn_versioninfo.cpp \

@@ -1,0 +1,15 @@
+* Speed up recursive parallel make by allowing the building of several of the
+  subdirectories.  Thanks to Francois for bringing up this issue at IJCAR,
+  causing me to look at it again.  (Kshitij and others have previously
+  requested this, too---but automake doesn't support it out of the box, and
+  a good way to do it didn't occur to me until this week.)  This speeds up
+  "make -j4" debug builds on church from 156 seconds to
+  119 seconds---a 24% savings for first-time builds!  Note that it does
+  change the order in which things are built, since previously enforced
+  (but unneeded) dependences have been broken, and "make" now gets new
+  flexibility in when to build different components.
+
+  This doesn't affect "make clean," "make dist," "make check," etc.
+
+  Let me know if this breaks anything; it may well.
+  "make -j" (without a limiting # of processes to start) is now inadvisable.
