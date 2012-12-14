@@ -10,8 +10,8 @@ noinst_PROGRAMS = \
 	helloworld \
 	combination \
 	bitvectors \
-	bitvectors_and_arrays
-
+	bitvectors_and_arrays \
+	qtest
 
 noinst_DATA =
 
@@ -39,6 +39,16 @@ bitvectors_SOURCES = \
 	bitvectors.cpp
 bitvectors_LDADD = \
 	@builddir@/../../src/libcvc4.la
+
+qtest_CPPFLAGS = \
+	$(CPPFLAGS) $(AM_CPPFLAGS) \
+	-I/home/mdeters/the-omega-project/installation/include/omega
+qtest_SOURCES = \
+	qtest.cpp
+qtest_LDADD = \
+	@builddir@/../../src/libcvc4.la \
+	-L/home/mdeters/the-omega-project/installation/lib \
+	-lomega
 
 # for installation
 examplesdir = $(docdir)/$(subdir)
