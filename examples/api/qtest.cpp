@@ -30,15 +30,16 @@
 #include "expr/kind.h" // for use with make examples
 //#include <cvc4/cvc4.h> // To follow the wiki
 
-#include <omega.h>
+#include "smt_omega.h"
 
 using namespace std;
 using namespace CVC4;
 
-unsigned n = 2;
-Expr F[3];
-Expr M[3];
-Expr var[3];
+unsigned n;
+string indent;
+vector<Expr> F;
+vector<Expr> M;
+vector< vector<Expr> > var;
 ExprManager em;
 SmtEngine cvc4(&em);
 
@@ -46,15 +47,42 @@ template <class T> Expr generalize(Expr C0, T test);
 pair<bool, Expr> qTest(unsigned i, Expr C);
 Expr pi(unsigned i, Expr e);
 
+Relation* s;
+
+inline Expr negateExpr(Expr e) {
+  return e.getKind() == kind::NOT ? e[0] : e.notExpr();
+}
+
+// compute F_{i + 1} from F_i
+void push(unsigned i) {
+  assert(F[i].getKind() == kind::FORALL);
+  assert(F[i][1].getKind() != kind::FORALL);
+  hash_map<Expr, Expr, ExprHashFunction> vars;
+  for(Expr::const_iterator it = F[i][0].begin(); it != F[i][0].end(); ++it) {
+    var[i + 1].push_back(vars[*it] = em.mkVar((*it).toString(), (*it).getType()));
+  }
+  if(F[i][1].getKind() == kind::EXISTS) {
+    // push in the negation
+    F[i + 1] = em.mkExpr(kind::FORALL, F[i][1][0], negateExpr(F[i][1][1].substitute(vars)));
+  } else {
+    // e[1] is quant free
+    F[i + 1] = negateExpr(F[i][1].substitute(vars));
+  }
+}
+
 int main() {
   cvc4.setOption("produce-models", "true");
   cvc4.setOption("output-language", "cvc4");
   cvc4.setOption("incremental", "true");
   cvc4.setOption("default-dag-thresh", 0);
 
-  M[0] = M[1] = M[2] = em.mkConst(true);
+  n = 2;
+  F.resize(n + 1);
+  M.resize(n + 1, em.mkConst(true));
+  var.resize(n + 1);
 
-  Expr x = var[0] = em.mkVar("x", em.integerType());
+  Expr x = em.mkVar("x", em.integerType());
+  var[0].push_back(x);
   Expr y = em.mkBoundVar("y", em.integerType());
   Expr z = em.mkBoundVar("z", em.integerType());
   F[0] = em.mkExpr(kind::FORALL,
@@ -69,47 +97,45 @@ int main() {
                                                            em.mkExpr(kind::GEQ, y, z)),
                                                  em.mkExpr(kind::LEQ, y, em.mkExpr(kind::MINUS, em.mkConst(Rational(1)), z))))));
 
-  y = var[1] = em.mkVar("y", em.integerType());
-  z = em.mkBoundVar("z", em.integerType());
-  F[1] = em.mkExpr(kind::FORALL,
-                   em.mkExpr(kind::BOUND_VAR_LIST, z),
-                   em.mkExpr(kind::NOT,
-                             em.mkExpr(kind::AND,
-                                       em.mkExpr(kind::GEQ, z, em.mkConst(Rational(0))),
-                                       em.mkExpr(kind::OR,
-                                                 em.mkExpr(kind::AND,
-                                                           em.mkExpr(kind::GEQ, x, z),
-                                                           em.mkExpr(kind::GEQ, y, z)),
-                                                 em.mkExpr(kind::LEQ, y, em.mkExpr(kind::MINUS, em.mkConst(Rational(1)), z))))));
+  Relation* p = smtToOmega(F[0]);
+  p->print();
+  cout << "+ is_sat: " << (p->is_satisfiable() ? "true" : "false") << endl;
+  *p = Symbolic_Solution(*p);
+  cout << "+ solution: ";
+  p->print();
+  cout << endl;
+  delete p;
 
-  z = var[2] = em.mkVar("z", em.integerType());
-  F[2] = em.mkExpr(kind::AND,
-                   em.mkExpr(kind::GEQ, z, em.mkConst(Rational(0))),
-                   em.mkExpr(kind::OR,
-                             em.mkExpr(kind::AND,
-                                       em.mkExpr(kind::GEQ, x, z),
-                                       em.mkExpr(kind::GEQ, y, z)),
-                             em.mkExpr(kind::LEQ, y, em.mkExpr(kind::MINUS, em.mkConst(Rational(1)), z))));
+  cout << "applying Monniaux-style QE to:" << endl << endl
+       << "  " << F[0] << endl << endl;
 
-  cout << "applying Monniaux-style QE to:" << endl
-       << F[0] << endl;
+  cout << "F[0]: " << F[0] << endl;
+  for(unsigned i = 0; i < n; ++i) {
+    push(i);
+    cout << "F[" << (i + 1) << "]: " << F[i + 1] << endl;
+  }
+  cout << endl;
   pair<bool, Expr> result = qTest(0, em.mkConst(true));
-  cout << "result is: " << (result.first ? "true" : "false") << " , " << result.second << endl;
+  cout << endl
+       << "result is: " << (result.first ? "true" : "false") << ", " << result.second << endl;
 
   return 0;
 }
 
 template <class T>
 Expr generalize(Expr C0, T test) {
-  //cout << "generalize: " << C0 << endl;
+  cout << indent << "generalize: " << C0 << endl;
+  indent += "| ";
   if(C0.getKind() != kind::AND) {
     //cout << "trying to remove " << C0 << endl;
     if(test(C0)) {
-      //cout << "-- success" << endl;
+      indent.resize(indent.size() - 2);
+      cout << indent << "+- success (removed atom)" << endl;
 #warning fixme - is this right?
       return C0;//return em.mkConst(true);
     } else {
-      //cout << "-- fail" << endl;
+      indent.resize(indent.size() - 2);
+      cout << indent << "+- cannot generalize" << endl;
       return C0;
     }
   } else {
@@ -125,8 +151,14 @@ Expr generalize(Expr C0, T test) {
       }// else cout << "-- fail" << endl;
     }
     assert(v.size() > 0);
-    return (C0.getNumChildren() == v.size()) ? C0 :
-            v.size() == 1 ? v[0] : em.mkExpr(kind::AND, v);
+    indent.resize(indent.size() - 2);
+    if(C0.getNumChildren() == v.size()) {
+      cout << indent << "+- cannot generalize" << endl;
+      return C0;
+    } else {
+      cout << indent << "+- removed " << (C0.getNumChildren() - v.size()) << " atoms" << endl;
+      return v.size() == 1 ? v[0] : em.mkExpr(kind::AND, v);
+    }
   }
   assert(false);
 }
@@ -159,208 +191,105 @@ void atoms(Expr F, set<Expr>& a) {
 }
 
 pair<bool, Expr> smtTest(Expr C, Expr F) {
-  cout << "smtTest(" << C << " , " << F << ")" << endl;
+  cout << indent << "smtTest(" << C << ", " << F << ")" << endl;
   Result r = cvc4.checkSat(em.mkExpr(kind::AND, C, F));
   vector<Expr> v;
   if(r.isSat() == Result::SAT) {
-    cout << "SAT" << endl;
+    cout << indent << ". model: ";
+    bool first = true;
+    for(vector< vector<Expr> >::const_iterator i = var.begin(); i != var.end(); ++i) {
+      for(vector<Expr>::const_iterator j = (*i).begin(); j != (*i).end(); ++j) {
+        if(! first) {
+          cout << " , ";
+        } else {
+          first = false;
+        }
+        cout << *j << " = " << cvc4.getValue(*j);
+      }
+    }
+    cout << endl;
     set<Expr> a;
     atoms(F, a);
     assert(a.size() > 0);
-    //cout << "atoms of " << F << " :";
     for(set<Expr>::const_iterator i = a.begin(); i != a.end(); ++i) {
       if(cvc4.getValue(*i).getConst<bool>()) {
         v.push_back(*i);
       } else {
-        v.push_back((*i).notExpr());
+        v.push_back(negateExpr(*i));
       }
-      //cout << " " << v.back();
     }
-    //cout << endl;
-    return make_pair(true, v.size() == 1 ? v[0] : em.mkExpr(kind::AND, v));
+    Expr r = v.size() == 1 ? v[0] : em.mkExpr(kind::AND, v);
+    cout << indent << ".. SAT " << r << endl;
+    return make_pair(true, r);
   } else {
-    cout << "UNSAT" << endl;
+    cout << indent << ".. UNSAT" << endl;
     return make_pair(false, em.mkConst(false));
   }
 }
 
-Relation* s;
-
-map<Expr, Global_Var_ID> cache;
-map<Variable_ID, Expr> revCache;
-
-Variable_ID varid(Expr e) {
-  assert(e.getKind() == kind::VARIABLE);
-  Global_Var_ID& var = cache[e];
-  if(var == NULL) {
-    var = new Free_Var_Decl(e.toString().c_str());
-    Variable_ID id = s->get_local(var);
-    revCache[id] = e;
-    return id;
-  }
-  return s->get_local(var);
-}
-
-void smtToOmega(Expr e, GEQ_Handle& g, bool negate) {
-  switch(e.getKind()) {
-  case kind::PLUS:
-    for(unsigned i = 0; i < e.getNumChildren(); ++i) {
-      smtToOmega(e[i], g, negate);
-    }
-    break;
-  case kind::MULT: {
-    assert(e.getNumChildren() == 2);// MULT can have more, but probably not in our use case
-    assert(e[0].getKind() == kind::CONST_RATIONAL);
-    assert(e[1].getKind() == kind::VARIABLE);
-    const Rational& r = e[0].getConst<Rational>();
-    assert(r.getDenominator() == 1);
-    long c = r.getNumerator().getLong();
-    g.update_coef(varid(e[1]), negate ? -c : c);
-    break;
-  }
-  case kind::MINUS:
-    smtToOmega(e[0], g, negate);
-    smtToOmega(e[1], g, !negate);
-    break;
-  case kind::CONST_RATIONAL: {
-    const Rational& r = e.getConst<Rational>();
-    assert(r.getDenominator() == 1);
-    long c = r.getNumerator().getLong();
-    g.update_const(negate ? -c : c);
-    break;
-  }
-  case kind::VARIABLE:
-    g.update_coef(varid(e), negate ? -1 : 1);
-    break;
-  case kind::UMINUS:
-    smtToOmega(e, g, !negate);
-    break;
-  default:
-    cout << "don't yet handle " << e << " kind " << e.getKind() << endl;
-    assert(false);// don't handle this yet
-  }
-}
-
-void smtToOmega(Expr e, F_And* f) {
-  switch(e.getKind()) {
-  case kind::AND:
-    f = f->add_and();
-    for(unsigned i = 0; i < e.getNumChildren(); ++i) {
-      smtToOmega(e[i], f);
-    }
-    break;
-  case kind::OR: {
-    F_Or* ff = f->add_or();
-    for(unsigned i = 0; i < e.getNumChildren(); ++i) {
-      smtToOmega(e[i], ff->add_and());
-    }
-    break;
-  }
-  case kind::NOT: {
-    F_Not* ff = f->add_not();
-    smtToOmega(e[0], ff->add_and());
-    break;
-  }
-  case kind::LEQ: {
-    GEQ_Handle g = f->add_GEQ();
-    smtToOmega(e[1], g, false);
-    smtToOmega(e[0], g, true);
-    break;
-  }
-  case kind::GEQ: {
-    GEQ_Handle g = f->add_GEQ();
-    smtToOmega(e[0], g, false);
-    smtToOmega(e[1], g, true);
-    break;
-  }
-  case kind::XOR:
-  case kind::IFF:
-  case kind::IMPLIES:
-  default:
-    cout << "don't yet handle " << e.getKind() << endl;
-    assert(false);// don't handle this yet
-  }
-}
-
-Expr omegaToSmt(Constraint_Handle c, bool eq) {
-  vector<Expr> v;
-  v.push_back(em.mkConst(Rational(long(c.get_const()))));
-  for(Constr_Vars_Iter i = c; i; ++i) {
-    v.push_back(em.mkExpr(kind::MULT, em.mkConst(Rational(long((*i).coef))), revCache[(*i).var]));
-  }
-  assert(v.size() > 0);
-  return em.mkExpr(eq ? kind::EQUAL : kind::GEQ, (v.size() == 1) ? v[0] : em.mkExpr(kind::PLUS, v), em.mkConst(Rational(0)));
-}
-
-Expr omegaToSmt(Conjunct& c) {
-  vector<Expr> v;
-  for(EQ_Iterator i = c.EQs(); i; ++i) {
-    v.push_back(omegaToSmt(*i, true));
-  }
-  for(GEQ_Iterator i = c.GEQs(); i; ++i) {
-    v.push_back(omegaToSmt(*i, false));
-  }
-  assert(v.size() > 0);
-  return (v.size() == 1) ? v[0] : em.mkExpr(kind::AND, v);
-}
-
-Expr omegaToSmt(Relation& p) {
-  DNF* d = p.query_DNF();
-  vector<Expr> v;
-  for(DNF_Iterator i(d); i; ++i) {
-    v.push_back(omegaToSmt(**i));
-  }
-  assert(v.size() > 0);
-  return (v.size() == 1) ? v[0] : em.mkExpr(kind::OR, v);
-}
-
 Expr pi(unsigned i, Expr e) {
-  //cout << "pi " << var[i + 1] << " " << e << endl;
-  s = new Relation(0);
-  smtToOmega(e, s->add_and());
-  //s->print(); cout << endl;
-  Global_Var_ID global = cache[var[i + 1]];
-  if(s->has_local(global)) {
-    Relation p = Symbolic_Solution(Project(*s, global));
-    //p.print(); cout << endl;
-    e = cvc4.simplify(omegaToSmt(p));
-    //cout << " -- got " << e << endl;
-  } else {
-    //cout << " -- does not contain " << var[i + 1] << endl;
+  cout << indent << "pi [ ";
+  copy(var[i + 1].begin(), var[i + 1].end(), ostream_iterator<Expr>(cout, " "));
+  cout << "] " << e << endl;
+
+  Relation* p = smtToOmega(e);
+  bool hasOne = false;
+  for(vector<Expr>::const_iterator it = var[i + 1].begin(); it != var[i + 1].end(); ++it) {
+    Global_Var_ID global = omegaVar(*it);
+    if(p->has_local(global)) {
+      cout << indent << " -- projecting " << *it << endl;
+      *p = Project(*p, global);
+      hasOne = true;
+    } else {
+      cout << indent << " -- does not contain " << *it << endl;
+    }
   }
-  delete s;
+  if(hasOne) {
+    *p = Symbolic_Solution(*p);
+    e = cvc4.simplify(omegaToSmt(p, &em));
+    cout << indent << " -- got " << e << endl;
+  } else {
+    cout << indent << " -- answer same as input" << endl;
+  }
+  delete p;
   return e;
 }
 
 pair<bool, Expr> qTest(unsigned i, Expr C) {
-  cout << "qTest(" << i << " , " << C << ")" << endl;
+  cout << indent << "qTest(" << i << ", " << C << ")" << endl;
+  indent += "  ";
   if(i == n) {
     pair<bool, Expr> p = smtTest(C, F[n]);
     if(p.first == false) {
-      cout << "qTest(" << i << " , " << C << ") returns false, false" << endl;
+      indent.resize(indent.size() - 2);
+      cout << indent << "qTest(" << i << ", " << C << ") returns false, false" << endl;
       return make_pair(false, em.mkConst(false));
     } else {
       Expr e = generalize(p.second, not1(first<bool, Expr, Expr, binder2nd<pointer_to_binary_function< Expr, Expr, pair<bool, Expr> > > >(bind2nd(pointer_to_binary_function< Expr, Expr, pair<bool, Expr> >(smtTest), F[n]))));
-      cout << "qTest(" << i << " , " << C << ") returns true, " << e << endl;
+      indent.resize(indent.size() - 2);
+      cout << indent << "qTest(" << i << ", " << C << ") returns true, " << e << endl;
       return make_pair(true, e);
     }
   } else {
     for(;;) {
       pair<bool, Expr> p = smtTest(C, M[i]);
       if(p.first == false) {
-        cout << "qTest(" << i << " , " << C << ") returns false, false" << endl;
+        indent.resize(indent.size() - 2);
+        cout << indent << "qTest(" << i << ", " << C << ") returns false, false" << endl;
         return make_pair(false, em.mkConst(false));
       } else {
         pair<bool, Expr> pp = qTest(i + 1, p.second);
         if(pp.first == false) {
           Expr e = generalize(p.second, not1(first<bool, Expr, Expr, binder1st<pointer_to_binary_function< unsigned, Expr, pair<bool, Expr> > > >(bind1st(pointer_to_binary_function< unsigned, Expr, pair<bool, Expr> >(qTest), i + 1))));
-          cout << "qTest(" << i << " , " << C << ") returns true, " << e << endl;
+          indent.resize(indent.size() - 2);
+          cout << indent << "qTest(" << i << ", " << C << ") returns true, " << e << endl;
           return make_pair(true, e);
         } else {
-          M[i] = M[i].andExpr(pi(i, pp.second).notExpr());
-          cout << "M[" << i << "] gets " << M[i] << endl;
+          Expr c = negateExpr(pi(i, pp.second));
+          M[i] = M[i].andExpr(c);
+          cout << indent << "M[" << i << "] conjoined with " << c << endl;
           M[i] = cvc4.simplify(M[i]);
-          cout << "M[" << i << "] now " << M[i] << endl;
+          cout << indent << "M[" << i << "] is now " << M[i] << endl;
         }
       }
     }

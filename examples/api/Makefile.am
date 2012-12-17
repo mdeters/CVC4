@@ -44,7 +44,8 @@ qtest_CPPFLAGS = \
 	$(CPPFLAGS) $(AM_CPPFLAGS) \
 	-I/home/mdeters/the-omega-project/installation/include/omega
 qtest_SOURCES = \
-	qtest.cpp
+	qtest.cpp \
+	smt_omega.cpp
 qtest_LDADD = \
 	@builddir@/../../src/libcvc4.la \
 	-L/home/mdeters/the-omega-project/installation/lib \
