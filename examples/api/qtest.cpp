@@ -28,12 +28,15 @@
 #include "smt/smt_engine.h" // for use with make examples
 #include "expr/expr_manager.h" // for use with make examples
 #include "expr/kind.h" // for use with make examples
+#include "parser/parser.h" // for use with make examples
+#include "parser/parser_builder.h" // for use with make examples
 //#include <cvc4/cvc4.h> // To follow the wiki
 
 #include "smt_omega.h"
 
 using namespace std;
 using namespace CVC4;
+using namespace CVC4::parser;
 
 unsigned n;
 string indent;
@@ -70,12 +73,40 @@ void push(unsigned i) {
   }
 }
 
-int main() {
+bool squash(Expr& e) {
+  if(( e.getKind() == kind::FORALL || e.getKind() == kind::EXISTS ) &&
+     e.getKind() == e[1].getKind()) {
+    ExprManager* em = e.getExprManager();
+    vector<Expr> v = e[0].getChildren();
+    v.insert(v.end(), e[1][0].begin(), e[1][0].end());
+    e = em->mkExpr(e.getKind(), em->mkExpr(kind::BOUND_VAR_LIST, v), e[1][1]);
+    return true;
+  }
+  return false;
+}
+
+unsigned prenexify(Expr& e) {
+  while(squash(e))
+    ;
+  if(e.getKind() == kind::FORALL || e.getKind() == kind::EXISTS) {
+    Expr body = e[1];
+    unsigned i = prenexify(body);
+    if(body != e[1]) {
+      e = e.getExprManager()->mkExpr(e.getKind(), e[0], body);
+    }
+    return i + 1;
+  } else {
+    return 0;
+  }
+}
+
+int main(int argc, char* argv[]) {
   cvc4.setOption("produce-models", "true");
   cvc4.setOption("output-language", "cvc4");
   cvc4.setOption("incremental", "true");
   cvc4.setOption("default-dag-thresh", 0);
 
+  /*
   n = 2;
   F.resize(n + 1);
   M.resize(n + 1, em.mkConst(true));
@@ -96,13 +127,43 @@ int main() {
                                                            em.mkExpr(kind::GEQ, x, z),
                                                            em.mkExpr(kind::GEQ, y, z)),
                                                  em.mkExpr(kind::LEQ, y, em.mkExpr(kind::MINUS, em.mkConst(Rational(1)), z))))));
+  */
+
+  if(argc != 2) {
+    cerr << "usage: " << argv[0] << " filename" << endl;
+    return 1;
+  }
+
+  Parser *parser = ParserBuilder(&em, argv[1]).withInputLanguage(language::input::LANG_MJOLLNIR).build();
+
+  Expr ex = parser->nextExpression();
+  cout << "read input: " << ex << endl << endl;
+  n = prenexify(ex);
+  if(ex.getKind() == kind::EXISTS) {
+    // Skolemize
+    var.resize(1);
+    hash_map<Expr, Expr, ExprHashFunction> subs;
+    for(Expr::const_iterator i = ex[0].begin(); i != ex[0].end(); ++i) {
+      var[0].push_back(subs[*i] = em.mkVar((*i).toString(), (*i).getType()));
+    }
+    ex = ex[1].substitute(subs);
+    --n;
+  }
+  F.resize(n + 1);
+  M.resize(n + 1, em.mkConst(true));
+  var.resize(n + 1);
+  F[0] = ex;
+  if(! parser->nextExpression().isNull()) {
+    cerr << "warning: input file contains more expressions (ignored)" << endl;
+  }
+  delete parser;
 
   Relation* p = smtToOmega(F[0]);
   p->print();
-  cout << "+ is_sat: " << (p->is_satisfiable() ? "true" : "false") << endl;
-  *p = Symbolic_Solution(*p);
-  cout << "+ solution: ";
-  p->print();
+  //cout << "+ is_sat: " << endl << (p->is_satisfiable() ? "true" : "false") << endl;
+  //*p = Symbolic_Solution(*p);
+  //cout << "+ solution: ";
+  //p->print();
   cout << endl;
   delete p;
 
@@ -117,7 +178,7 @@ int main() {
   cout << endl;
   pair<bool, Expr> result = qTest(0, em.mkConst(true));
   cout << endl
-       << "result is: " << (result.first ? "true" : "false") << ", " << result.second << endl;
+  << "result is: " << (result.first ? "true" : "false") << ", " << result.second << endl;
 
   return 0;
 }

@@ -33,6 +33,7 @@
 #include "parser/smt1/smt1_input.h"
 #include "parser/smt2/smt2_input.h"
 #include "parser/tptp/tptp_input.h"
+#include "parser/mjollnir/mjollnir_input.h"
 #include "util/output.h"
 
 using namespace std;
@@ -207,6 +208,10 @@ AntlrInput* AntlrInput::newInput(InputLanguage lang, AntlrInputStream& inputStre
 
   case LANG_TPTP:
     input = new TptpInput(inputStream);
+    break;
+
+  case LANG_MJOLLNIR:
+    input = new MjollnirInput(inputStream);
     break;
 
   default:

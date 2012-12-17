@@ -44,11 +44,18 @@ void smtToOmega(Expr e, GEQ_Handle& g, bool negate, Relation* s) {
   case kind::MULT: {
     assert(e.getNumChildren() == 2);// MULT can have more, but probably not in our use case
     assert(e[0].getKind() == kind::CONST_RATIONAL);
-    assert(e[1].getKind() == kind::VARIABLE);
+    assert(e[1].getKind() == kind::VARIABLE || e[1].getKind() == kind::BOUND_VARIABLE);
     const Rational& r = e[0].getConst<Rational>();
     assert(r.getDenominator() == 1);
     long c = r.getNumerator().getLong();
-    g.update_coef(varid(e[1], s), negate ? -c : c);
+    Variable_ID id;
+    if(e[1].getKind() == kind::VARIABLE) {
+      id = varid(e[1], s);
+    } else {
+      assert(qcache.find(e[1]) != qcache.end());
+      id = qcache[e[1]];
+    }
+    g.update_coef(id, negate ? -c : c);
     break;
   }
   case kind::MINUS:
@@ -159,6 +166,7 @@ Expr omegaToSmt(Constraint_Handle c, bool eq, ExprManager* em) {
   vector<Expr> v;
   v.push_back(em->mkConst(Rational(long(c.get_const()))));
   for(Constr_Vars_Iter i = c; i; ++i) {
+    cout << "var: " << (*i).var->kind() << endl;
     v.push_back(em->mkExpr(kind::MULT, em->mkConst(Rational(long((*i).coef))), revCache[(*i).var]));
   }
   assert(v.size() > 0);

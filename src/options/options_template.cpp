@@ -236,6 +236,7 @@ Languages currently supported as arguments to the -L / --lang option:\n\
   smt1 | smtlib1                 SMT-LIB format 1.2\n\
   smt | smtlib | smt2 | smtlib2  SMT-LIB format 2.0\n\
   tptp                           TPTP format (cnf and fof)\n\
+  mjollnir                       Mjollnir format\n\
 \n\
 Languages currently supported as arguments to the --output-lang option:\n\
   auto                           match output language to input language\n\

@@ -48,6 +48,7 @@ qtest_SOURCES = \
 	smt_omega.cpp
 qtest_LDADD = \
 	@builddir@/../../src/libcvc4.la \
+	@builddir@/../../src/parser/libcvc4parser.la \
 	-L/home/mdeters/the-omega-project/installation/lib \
 	-lomega
 

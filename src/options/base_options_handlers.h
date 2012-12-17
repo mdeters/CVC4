@@ -111,6 +111,8 @@ inline InputLanguage stringToInputLanguage(std::string option, std::string optar
     return language::input::LANG_SMTLIB_V2;
   } else if(optarg == "tptp" || optarg == "LANG_TPTP") {
     return language::input::LANG_TPTP;
+  } else if(optarg == "mjollnir" || optarg == "LANG_MJOLLNIR") {
+    return language::input::LANG_TPTP;
   } else if(optarg == "auto" || optarg == "LANG_AUTO") {
     return language::input::LANG_AUTO;
   }

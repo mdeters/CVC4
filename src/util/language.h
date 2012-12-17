@@ -54,6 +54,9 @@ enum CVC4_PUBLIC Language {
   // START INPUT-ONLY LANGUAGES AT ENUM VALUE 10
   // THESE ARE IN PRINCIPLE NOT POSSIBLE OUTPUT LANGUAGES
 
+  /** The Mjollnir input language */
+  LANG_MJOLLNIR = 10,
+
   /** LANG_MAX is > any valid InputLanguage id */
   LANG_MAX
 };/* enum Language */
@@ -75,6 +78,9 @@ inline std::ostream& operator<<(std::ostream& out, Language lang) {
     break;
   case LANG_CVC4:
     out << "LANG_CVC4";
+    break;
+  case LANG_MJOLLNIR:
+    out << "LANG_MJOLLNIR";
     break;
   default:
     out << "undefined_input_language";
