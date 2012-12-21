@@ -18,6 +18,10 @@
  ** http://www-verimag.imag.fr/~monniaux/biblio/Monniaux_CAV10.pdf
  **/
 
+#ifdef NDEBUG
+#  warning compiling qtest without assertions!
+#endif
+
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -105,36 +109,17 @@ int main(int argc, char* argv[]) {
   cvc4.setOption("output-language", "cvc4");
   cvc4.setOption("incremental", "true");
   cvc4.setOption("default-dag-thresh", 0);
+  if(argc > 1 && !strcmp(argv[1], "-v")) {
+    cvc4.setOption("verbosity", 2);
+  }
 
-  /*
-  n = 2;
-  F.resize(n + 1);
-  M.resize(n + 1, em.mkConst(true));
-  var.resize(n + 1);
-
-  Expr x = em.mkVar("x", em.integerType());
-  var[0].push_back(x);
-  Expr y = em.mkBoundVar("y", em.integerType());
-  Expr z = em.mkBoundVar("z", em.integerType());
-  F[0] = em.mkExpr(kind::FORALL,
-                   em.mkExpr(kind::BOUND_VAR_LIST, y),
-                   em.mkExpr(kind::EXISTS,
-                             em.mkExpr(kind::BOUND_VAR_LIST, z),
-                             em.mkExpr(kind::AND,
-                                       em.mkExpr(kind::GEQ, z, em.mkConst(Rational(0))),
-                                       em.mkExpr(kind::OR,
-                                                 em.mkExpr(kind::AND,
-                                                           em.mkExpr(kind::GEQ, x, z),
-                                                           em.mkExpr(kind::GEQ, y, z)),
-                                                 em.mkExpr(kind::LEQ, y, em.mkExpr(kind::MINUS, em.mkConst(Rational(1)), z))))));
-  */
-
-  if(argc != 2) {
-    cerr << "usage: " << argv[0] << " filename" << endl;
+  if(argc < 2 || argc > 3 || (argc == 3 && strcmp(argv[1], "-v"))) {
+    cerr << "usage: " << argv[0] << " [-v] filename" << endl;
     return 1;
   }
 
-  Parser *parser = ParserBuilder(&em, argv[1]).withInputLanguage(language::input::LANG_MJOLLNIR).build();
+  const char* filename = argv[argc - 1];
+  Parser *parser = ParserBuilder(&em, filename).withInputLanguage(language::input::LANG_MJOLLNIR).build();
 
   Expr ex = parser->nextExpression();
   cout << "read input: " << ex << endl << endl;
@@ -185,6 +170,7 @@ int main(int argc, char* argv[]) {
 
 template <class T>
 Expr generalize(Expr C0, T test) {
+  assert(test(C0));
   cout << indent << "generalize: " << C0 << endl;
   indent += "| ";
   if(C0.getKind() != kind::AND) {
@@ -200,17 +186,22 @@ Expr generalize(Expr C0, T test) {
       return C0;
     }
   } else {
+    bool done;
     vector<Expr> v = C0.getChildren();
-    for(unsigned i = 1; i <= v.size(); ++i) {
-      vector<Expr> v2 = v;
-      v2.erase(v2.begin() + i - 1);
-      //cout << "trying to remove " << v[i - 1] << " from " << C0 << endl;
-      if(test(v2.size() == 1 ? v2[0] : em.mkExpr(kind::AND, v2))) {
-        v = v2;
-        --i;
-        //cout << "-- success" << endl;
-      }// else cout << "-- fail" << endl;
-    }
+    do {
+      done = true;
+      for(unsigned i = 1; i <= v.size(); ++i) {
+        vector<Expr> v2 = v;
+        v2.erase(v2.begin() + i - 1);
+        //cout << "trying to remove " << v[i - 1] << " from " << C0 << endl;
+        if(test(v2.size() == 1 ? v2[0] : em.mkExpr(kind::AND, v2))) {
+          v = v2;
+          --i;
+          done = false;
+          //cout << "-- success" << endl;
+        }// else cout << "-- fail" << endl;
+      }
+    } while(!done);
     assert(v.size() > 0);
     indent.resize(indent.size() - 2);
     if(C0.getNumChildren() == v.size()) {
@@ -326,7 +317,7 @@ pair<bool, Expr> qTest(unsigned i, Expr C) {
       cout << indent << "qTest(" << i << ", " << C << ") returns false, false" << endl;
       return make_pair(false, em.mkConst(false));
     } else {
-      Expr e = generalize(p.second, not1(first<bool, Expr, Expr, binder2nd<pointer_to_binary_function< Expr, Expr, pair<bool, Expr> > > >(bind2nd(pointer_to_binary_function< Expr, Expr, pair<bool, Expr> >(smtTest), F[n]))));
+      Expr e = generalize(p.second, not1(first<bool, Expr, Expr, binder2nd<pointer_to_binary_function< Expr, Expr, pair<bool, Expr> > > >(bind2nd(pointer_to_binary_function< Expr, Expr, pair<bool, Expr> >(smtTest), negateExpr(F[n])))));
       indent.resize(indent.size() - 2);
       cout << indent << "qTest(" << i << ", " << C << ") returns true, " << e << endl;
       return make_pair(true, e);
