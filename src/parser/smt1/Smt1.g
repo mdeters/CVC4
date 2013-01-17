@@ -368,6 +368,8 @@ builtinOp[CVC4::Kind& kind]
   | TILDE_TOK    { $kind = CVC4::kind::UMINUS; }
   | MINUS_TOK    { $kind = CVC4::kind::MINUS; }
   | DIV_TOK      { $kind = CVC4::kind::DIVISION; }
+  | INTDIV_TOK   { $kind = CVC4::kind::INTS_DIVISION; }
+  | INTMOD_TOK   { $kind = CVC4::kind::INTS_MODULUS; }
   // Bit-vectors
   | CONCAT_TOK   { $kind = CVC4::kind::BITVECTOR_CONCAT; }
   | BVAND_TOK    { $kind = CVC4::kind::BITVECTOR_AND;    }
@@ -684,6 +686,8 @@ AND_TOK           : 'and';
 AT_TOK            : '@';
 DISTINCT_TOK      : 'distinct';
 DIV_TOK           : '/';
+INTDIV_TOK        : 'div';
+INTMOD_TOK        : 'mod';
 EQUAL_TOK         : '=';
 EXISTS_TOK        : 'exists';
 FORALL_TOK        : 'forall';

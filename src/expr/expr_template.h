@@ -814,7 +814,7 @@ public:
         return s_defaultDag + 1;
       }
     }
-    return static_cast<size_t>(l - 1);
+    return 0;
   }
 
   static inline void setDag(std::ostream& out, size_t dag) {

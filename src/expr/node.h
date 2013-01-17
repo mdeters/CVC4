@@ -806,10 +806,10 @@ public:
    * (might break language compliance, but good for debugging expressions)
    * @param language the language in which to output
    */
-  inline void toStream(std::ostream& out, int toDepth = -1, bool types = false, size_t dag = 1,
+  inline void toStream(std::ostream& out, int toDepth = -1, bool types = false, size_t dag = 0,
                        OutputLanguage language = language::output::LANG_AST) const {
     assertTNodeNotExpired();
-    d_nv->toStream(out, toDepth, types, dag, language);
+    d_nv->toStream(out, toDepth, types, 0, language);
   }
 
   /**

@@ -43,6 +43,38 @@ class ArithOperatorTypeRule {
 public:
   inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)
       throw (TypeCheckingExceptionPrivate, AssertionException) {
+    switch(n.getKind()) {
+      case kind::DIVISION:
+      case kind::INTS_DIVISION:
+      case kind::INTS_DIVISION_TOTAL:
+        if(Rewriter::rewrite(n).isConst()) {
+          break;
+        }
+      case kind::POW:
+      case kind::INTS_MODULUS:
+      case kind::DIVISION_TOTAL:
+      case kind::INTS_MODULUS_TOTAL:
+        throw TypeCheckingExceptionPrivate(n, "nonlinear");
+      case kind::MULT: {
+        bool allConstants = true;
+        for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
+          TNode m = *i;
+          while(m.getKind() == kind::UMINUS) {
+            m = m[0];
+          }
+          if(!m.isConst()) {
+            if(allConstants) {
+              allConstants = false;
+            } else {
+              throw TypeCheckingExceptionPrivate(n, "nonlinear");
+            }
+          }
+        }
+        break;
+      }
+      default:
+        ;
+    }
     TypeNode integerType = nodeManager->integerType();
     TypeNode realType = nodeManager->realType();
     TNode::iterator child_it = n.begin();
