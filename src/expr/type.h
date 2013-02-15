@@ -60,8 +60,7 @@ class RecordType;
 class SExprType;
 class SortType;
 class SortConstructorType;
-// not in release 1.0
-//class PredicateSubtype;
+class PredicateSubtype;
 class SubrangeType;
 class Type;
 
@@ -347,8 +346,7 @@ public:
    * Is this a predicate subtype?
    * @return true if this is a predicate subtype
    */
-  // not in release 1.0
-  //bool isPredicateSubtype() const;
+  bool isPredicateSubtype() const;
 
   /**
    * Is this an integer subrange type?
@@ -551,8 +549,6 @@ public:
 
 };/* class SortConstructorType */
 
-// not in release 1.0
-#if 0
 /**
  * Class encapsulating a predicate subtype.
  */
@@ -573,7 +569,6 @@ public:
   Type getParentType() const;
 
 };/* class PredicateSubtype */
-#endif /* 0 */
 
 /**
  * Class encapsulating an integer subrange type.

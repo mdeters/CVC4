@@ -173,6 +173,9 @@ bool SharedTermsVisitor::alreadyVisited(TNode current, TNode parent) const {
       typeTheoryId = Theory::theoryOf(type);
     } else {
       TypeNode type = current.getType();
+      while(type.isPredicateSubtype()) {
+        type = type.getSubtypeParentType();
+      }
       typeTheoryId = Theory::theoryOf(type);
       if (typeTheoryId != currentTheoryId) {
         if (options::finiteModelFind() && type.isSort()) {
@@ -226,6 +229,9 @@ void SharedTermsVisitor::visit(TNode current, TNode parent) {
       typeTheoryId = Theory::theoryOf(type);
     } else {
       TypeNode type = current.getType();
+      while(type.isPredicateSubtype()) {
+        type = type.getSubtypeParentType();
+      }
       typeTheoryId = Theory::theoryOf(type);
       if (typeTheoryId != currentTheoryId) {
         if (options::finiteModelFind() && type.isSort()) {
