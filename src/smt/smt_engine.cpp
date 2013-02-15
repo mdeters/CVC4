@@ -2997,8 +2997,15 @@ void SmtEnginePrivate::processAssertions() {
     // We also can't use an iterator, because the vector may be moved in
     // memory during this loop.
     Chat() << "constraining subtypes..." << endl;
-    for(unsigned i = 0, i_end = d_assertionsToPreprocess.size(); i != i_end; ++i) {
+    unsigned i, i_end;
+    for(i = 0, i_end = d_assertionsToPreprocess.size(); i != i_end; ++i) {
       constrainSubtypes(d_assertionsToPreprocess[i], d_assertionsToPreprocess);
+    }
+    Chat() << "...re-expanding..." << endl;
+    hash_map<Node, Node, NodeHashFunction> cache;
+    for(; i < d_assertionsToPreprocess.size(); ++i) {
+      d_assertionsToPreprocess[i] =
+        expandDefinitions(d_assertionsToPreprocess[i], cache);
     }
   }
   dumpAssertions("post-constrain-subtypes", d_assertionsToPreprocess);
@@ -3064,6 +3071,9 @@ void SmtEnginePrivate::processAssertions() {
     //sort inference technique
     d_smt.d_theoryEngine->getSortInference()->simplify( d_assertionsToPreprocess );
   }
+
+  Assert(d_assertionsToCheck.size() == 0);
+  d_realAssertionsEnd = d_assertionsToPreprocess.size();
 
   dumpAssertions("pre-simplify", d_assertionsToPreprocess);
   Chat() << "simplifying assertions..." << endl;
