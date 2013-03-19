@@ -9,7 +9,7 @@
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
- ** \brief Parser for TPTP input language.
+ ** \brief Parser for TPTP input language
  **
  ** Parser for TPTP input language.
  ** cf. http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SyntaxBNF
@@ -18,8 +18,8 @@
 grammar Tptp;
 
 options {
-  // C output for antlr
-  language = 'C';
+  // C++ output for antlr
+  language = 'Cpp';
 
   // Skip the default error handling, just break with exceptions
   // defaultErrorHandler = false;
@@ -29,6 +29,49 @@ options {
   // If you change this k, change it also in tptp_input.cpp !
   k = 2;
 }/* options */
+
+@lexer::namespace { CVC4 }
+@parser::namespace { CVC4 }
+
+@lexer::traits {
+  namespace parser { class TptpInput; }
+
+  class TptpLexer;
+  class TptpParser;
+
+  template<class ImplTraits>
+  class TptpTraits : public antlr3::CustomTraitsBase<ImplTraits> {
+  public:
+    typedef CVC4::parser::TptpInput InputType;
+    class BaseParserType : public antlr3::Parser<ImplTraits> {
+    public:
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, state) {}
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::TokenStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Tptp SuperType;
+      SuperType* super;
+    };
+    class BaseLexerType : public antlr3::Lexer<ImplTraits> {
+    public:
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, state) {}
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::InputStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Tptp SuperType;
+      SuperType* super;
+    };
+    //for using the token stream which deleted the tokens, once it is reduced to a rule
+    //but it leaves the start and stop tokens. So they can be accessed as usual
+    static const bool TOKENS_ACCESSED_FROM_OWNING_RULE = true;
+  };
+
+  typedef antlr3::Traits< TptpLexer, TptpParser, TptpTraits > TptpLexerTraits;
+  typedef TptpLexerTraits TptpParserTraits;
+
+  /* If you don't want the override it is like this.
+     class TLexer;
+     class TParser;
+     typedef antlr3::Traits< TLexer, TParser > TLexerTraits;
+     typedef TLexerTraits TParserTraits;
+  */
+}
 
 @header {
 /**
@@ -55,7 +98,7 @@ options {
  */
 #define ANTLR3_INLINE_INPUT_ASCII
 
-#include "parser/antlr_tracing.h"
+#include "parser/tptp/tptp.h"
 
 }/* @lexer::includes */
 
@@ -71,7 +114,7 @@ using namespace CVC4::parser;
 /* These need to be macros so they can refer to the PARSER macro, which will be defined
  * by ANTLR *after* this section. (If they were functions, PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Tptp*)LEXER->super)
+#define PARSER_STATE (this->super)
 #undef EXPR_MANAGER
 #define EXPR_MANAGER PARSER_STATE->getExprManager()
 #undef MK_EXPR
@@ -83,10 +126,11 @@ using namespace CVC4::parser;
 }/* @lexer::postinclude */
 
 @parser::includes {
+
 #include "expr/command.h"
 #include "parser/parser.h"
 #include "parser/tptp/tptp.h"
-#include "parser/antlr_tracing.h"
+#include "parser/tptp/generated/TptpLexer.hpp"
 
 }/* @parser::includes */
 
@@ -111,7 +155,7 @@ using namespace CVC4::parser;
 /* These need to be macros so they can refer to the PARSER macro, which will be defined
  * by ANTLR *after* this section. (If they were functions, PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Tptp*)PARSER->super)
+#define PARSER_STATE (this->super)
 #undef EXPR_MANAGER
 #define EXPR_MANAGER PARSER_STATE->getExprManager()
 #undef MK_EXPR
@@ -218,7 +262,7 @@ parseCommand returns [CVC4::Command* cmd = NULL]
 formulaRole[CVC4::parser::Tptp::FormulaRole& role]
   : LOWER_WORD
     {
-      std::string r = AntlrInput::tokenText($LOWER_WORD);
+      std::string r = AntlrInput<TptpLexerTraits>::tokenText($LOWER_WORD);
       if      (r == "axiom")              role = Tptp::FR_AXIOM;
       else if (r == "hypothesis")         role = Tptp::FR_HYPOTHESIS;
       else if (r == "definition")         role = Tptp::FR_DEFINITION;
@@ -449,7 +493,8 @@ letTerm[CVC4::Expr& expr]
 simpleTerm[CVC4::Expr& expr]
   : variable[expr]
   | NUMBER { expr = PARSER_STATE->d_tmp_expr; }
-  | DISTINCT_OBJECT { expr = PARSER_STATE->convertStrToUnsorted(AntlrInput::tokenText($DISTINCT_OBJECT)); }
+  | DISTINCT_OBJECT { expr = PARSER_STATE->convertStrToUnsorted(
+        AntlrInput<TptpLexerTraits>::tokenText($DISTINCT_OBJECT)); }
   ;
 
 functionTerm[CVC4::Expr& expr]
@@ -492,7 +537,7 @@ arguments[std::vector<CVC4::Expr>& args]
 variable[CVC4::Expr& expr]
   : UPPER_WORD
     {
-      std::string name = AntlrInput::tokenText($UPPER_WORD);
+      std::string name = AntlrInput<TptpLexerTraits>::tokenText($UPPER_WORD);
       if(!PARSER_STATE->cnf || PARSER_STATE->isDeclared(name)) {
         expr = PARSER_STATE->getVariable(name);
       } else {
@@ -570,7 +615,8 @@ fofUnitaryFormula[CVC4::Expr& expr]
 
 bindvariable[CVC4::Expr& expr]
   : UPPER_WORD
-    { std::string name = AntlrInput::tokenText($UPPER_WORD);
+    {
+      std::string name = AntlrInput<TptpLexerTraits>::tokenText($UPPER_WORD);
       expr = PARSER_STATE->mkBoundVar(name, PARSER_STATE->d_unsorted);
     }
   ;
@@ -902,7 +948,7 @@ DEFINED_SYMBOL : '$' LOWER_WORD;
  */
 
 WHITESPACE
-  : (' ' | '\t' | '\f' | '\r' | '\n')+ { SKIP(); }
+  : (' ' | '\t' | '\f' | '\r' | '\n')+ { skip(); }
   ;
 
 
@@ -930,14 +976,14 @@ LOWER_WORD : LOWER_ALPHA ALPHA_NUMERIC*;
 /* filename */
 unquotedFileName[std::string& name] /* Beware fileName identifier is used by the backend ... */
  : (s=LOWER_WORD_SINGLE_QUOTED | s=SINGLE_QUOTED)
-    { name = AntlrInput::tokenText($s);
+    { name = AntlrInput<TptpLexerTraits>::tokenText($s);
       name = name.substr(1, name.size() - 2 );
     };
 
 /* axiom name */
 nameN[std::string& name]
  : atomicWord[name]
- | NUMBER { name = AntlrInput::tokenText($NUMBER); }
+ | NUMBER { name = AntlrInput<TptpLexerTraits>::tokenText($NUMBER); }
  ;
 
 /* atomic word everything (fof, cnf, thf, tff, include must not be keyword at this position ) */
@@ -948,13 +994,14 @@ atomicWord[std::string& name]
  | TFF_TOK     { name = "tff"; }
  | TYPE_TOK    { name = "type"; }
  | INCLUDE_TOK { name = "include"; }
- | LOWER_WORD  { name = AntlrInput::tokenText($LOWER_WORD); }
- | LOWER_WORD_SINGLE_QUOTED // the lower word single quoted are considered without quote
-    { /* strip off the quotes */
-      name = AntlrInput::tokenTextSubstr($LOWER_WORD_SINGLE_QUOTED, 1 ,
-                                         ($LOWER_WORD_SINGLE_QUOTED->stop - $LOWER_WORD_SINGLE_QUOTED->start) - 1);
+ | LOWER_WORD  { name = AntlrInput<TptpLexerTraits>::tokenText($LOWER_WORD); }
+ | LOWER_WORD_SINGLE_QUOTED //the lower word single quoted are considered without quote
+    {
+      /* strip off the quotes */
+      name = AntlrInput<TptpLexerTraits>::tokenTextSubstr($LOWER_WORD_SINGLE_QUOTED, 1,
+                                         ($LOWER_WORD_SINGLE_QUOTED->get_stopIndex() - $LOWER_WORD_SINGLE_QUOTED->get_startIndex()) - 1);
     }
- | SINGLE_QUOTED {name = AntlrInput::tokenText($SINGLE_QUOTED); }; //for the others the quote remains
+ | SINGLE_QUOTED {name = AntlrInput<TptpLexerTraits>::tokenText($SINGLE_QUOTED); }; //for the others the quote remains
 
 /** I don't understand how is made the difference between rational and real in SyntaxBNF. So I put all in rational */
 /* Rational */
@@ -977,19 +1024,19 @@ NUMBER
   bool posE = true;
 }
   : ( SIGN[pos]? num=DECIMAL
-      { Integer i(AntlrInput::tokenText($num));
-        Rational r = pos ? i : -i;
+      { Integer i(AntlrInput<TptpLexerTraits>::tokenText($num));
+        Rational r = ( pos ? i : -i );
         PARSER_STATE->d_tmp_expr = MK_CONST(r);
       }
     | SIGN[pos]? num=DECIMAL DOT den=DECIMAL (EXPONENT SIGN[posE]? e=DECIMAL)?
-      { std::string snum = AntlrInput::tokenText($num);
-        std::string sden = AntlrInput::tokenText($den);
+      { std::string snum = AntlrInput<TptpLexerTraits>::tokenText($num);
+        std::string sden = AntlrInput<TptpLexerTraits>::tokenText($den);
         /* compute the numerator */
         Integer inum(snum + sden);
         // The sign
         inum = pos ? inum : -inum;
         // The exponent
-        size_t exp = ($e == NULL ? 0 : AntlrInput::tokenToUnsigned($e));
+        size_t exp = ($e == NULL ? 0 : AntlrInput<TptpLexerTraits>::tokenToUnsigned($e));
         // Decimal part
         size_t dec = sden.size();
         /* multiply it by 10 raised to the exponent reduced by the
@@ -1002,23 +1049,22 @@ NUMBER
         PARSER_STATE->d_tmp_expr = MK_CONST(r);
       }
     | SIGN[pos]? num=DECIMAL SLASH den=DECIMAL
-      { Integer inum(AntlrInput::tokenText($num));
-        Integer iden(AntlrInput::tokenText($den));
+      { Integer inum(AntlrInput<TptpLexerTraits>::tokenText($num));
+        Integer iden(AntlrInput<TptpLexerTraits>::tokenText($den));
         PARSER_STATE->d_tmp_expr = MK_CONST(Rational(pos ? inum : -inum, iden));
       }
-    )
-    { if(PARSER_STATE->cnf || PARSER_STATE->fof) {
-        // We're in an unsorted context, so put a conversion around it
-        PARSER_STATE->d_tmp_expr = PARSER_STATE->convertRatToUnsorted( PARSER_STATE->d_tmp_expr );
+    ) { if(PARSER_STATE->cnf || PARSER_STATE->fof) {
+          // We're in an unsorted context, so put a conversion around it
+          PARSER_STATE->d_tmp_expr = PARSER_STATE->convertRatToUnsorted( PARSER_STATE->d_tmp_expr );
+        }
       }
-    }
   ;
 
 /**
  * Matches the comments and ignores them
  */
 COMMENT
-  : '%' (~('\n' | '\r'))*     { SKIP(); }     //comment line
-  | '/*'  ( options {greedy=false;} : . )*  '*/' { SKIP(); } //comment block
+  : '%' (~('\n' | '\r'))*     { skip(); }     //comment line
+  | '/*'  ( options {greedy=false;} : . )*  '*/' { skip(); } //comment block
   ;
 

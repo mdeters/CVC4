@@ -16,12 +16,13 @@
 
 #include "cvc4parser_private.h"
 
+#include "parser/antlr_input.h"
+
 #ifndef __CVC4__PARSER__SMT1_INPUT_H
 #define __CVC4__PARSER__SMT1_INPUT_H
 
-#include "parser/antlr_input.h"
-#include "parser/smt1/generated/Smt1Lexer.h"
-#include "parser/smt1/generated/Smt1Parser.h"
+#include "parser/smt1/generated/Smt1Lexer.hpp"
+#include "parser/smt1/generated/Smt1Parser.hpp"
 
 // extern void Smt1ParserSetAntlrParser(CVC4::parser::AntlrParser* newAntlrParser);
 
@@ -33,13 +34,13 @@ class ExprManager;
 
 namespace parser {
 
-class Smt1Input : public AntlrInput {
+class Smt1Input : public AntlrInput<Smt1LexerTraits> {
 
   /** The ANTLR3 SMT lexer for the input. */
-  pSmt1Lexer d_pSmt1Lexer;
+  Smt1Lexer* d_pSmt1Lexer;
 
   /** The ANTLR3 CVC parser for the input. */
-  pSmt1Parser d_pSmt1Parser;
+  Smt1Parser* d_pSmt1Parser;
 
 public:
 
@@ -48,7 +49,7 @@ public:
    *
    * @param inputStream the input stream to use
    */
-  Smt1Input(AntlrInputStream& inputStream);
+  Smt1Input(AntlrInputStream<Smt1LexerTraits>& inputStream);
 
   /** Destructor. Frees the lexer and the parser. */
   virtual ~Smt1Input();

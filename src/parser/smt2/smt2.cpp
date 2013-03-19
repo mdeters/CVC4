@@ -315,23 +315,19 @@ void Smt2::checkThatLogicIsSet() {
 /* The include are managed in the lexer but called in the parser */
 // Inspired by http://www.antlr3.org/api/C/interop.html
 
-static bool newInputStream(const std::string& filename, pANTLR3_LEXER lexer) {
+static bool newInputStream(const std::string& filename, Smt2LexerTraits::BaseLexerType* lexer) {
   Debug("parser") << "Including " << filename << std::endl;
   // Create a new input stream and take advantage of built in stream stacking
-  // in C target runtime.
+  // in C++ target runtime.
   //
-  pANTLR3_INPUT_STREAM    in;
-#ifdef CVC4_ANTLR3_OLD_INPUT_STREAM
-  in = antlr3AsciiFileStreamNew((pANTLR3_UINT8) filename.c_str());
-#else /* CVC4_ANTLR3_OLD_INPUT_STREAM */
-  in = antlr3FileStreamNew((pANTLR3_UINT8) filename.c_str(), ANTLR3_ENC_8BIT);
-#endif /* CVC4_ANTLR3_OLD_INPUT_STREAM */
+  Smt2LexerTraits::InputStreamType* in;
+  in = new Smt2LexerTraits::InputStreamType((const ANTLR_UINT8*) filename.c_str(), ANTLR_ENC_8BIT);
   if( in == NULL ) {
     Debug("parser") << "Can't open " << filename << std::endl;
     return false;
   }
   // Same thing as the predefined PUSHSTREAM(in);
-  lexer->pushCharStream(lexer, in);
+  lexer->pushCharStream(in);
   // restart it
   //lexer->rec->state->tokenStartCharIndex      = -10;
   //lexer->emit(lexer);
@@ -355,8 +351,8 @@ void Smt2::includeFile(const std::string& filename) {
   }
 
   // Get the lexer
-  AntlrInput* ai = static_cast<AntlrInput*>(getInput());
-  pANTLR3_LEXER lexer = ai->getAntlr3Lexer();
+  AntlrInput<Smt2LexerTraits>* ai = static_cast< AntlrInput<Smt2LexerTraits>* >(getInput());
+  Smt2LexerTraits::BaseLexerType* lexer = ai->getAntlr3Lexer();
   // get the name of the current stream "Does it work inside an include?"
   const std::string inputName = ai->getInputStreamName();
 

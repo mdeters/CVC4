@@ -17,8 +17,8 @@
 grammar Cvc;
 
 options {
-  // C output for antlr
-  language = 'C';
+  // C++ output for antlr
+  language = 'Cpp';
 
   // Skip the default error handling, just break with exceptions
   // defaultErrorHandler = false;
@@ -221,6 +221,49 @@ tokens {
   DOTDOT;
 }/* tokens */
 
+@lexer::namespace { CVC4 }
+@parser::namespace { CVC4 }
+
+@lexer::traits {
+  namespace parser { class CvcInput; }
+
+  class CvcLexer;
+  class CvcParser;
+
+  template<class ImplTraits>
+  class CvcTraits : public antlr3::CustomTraitsBase<ImplTraits> {
+  public:
+    typedef CVC4::parser::CvcInput InputType;
+    class BaseParserType : public antlr3::Parser<ImplTraits> {
+    public:
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, state) {}
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::TokenStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Parser SuperType;
+      SuperType* super;
+    };
+    class BaseLexerType : public antlr3::Lexer<ImplTraits> {
+    public:
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, state) {}
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::InputStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Parser SuperType;
+      SuperType* super;
+    };
+    //for using the token stream which deleted the tokens, once it is reduced to a rule
+    //but it leaves the start and stop tokens. So they can be accessed as usual
+    static const bool TOKENS_ACCESSED_FROM_OWNING_RULE = true;
+  };
+
+  typedef antlr3::Traits< CvcLexer, CvcParser, CvcTraits > CvcLexerTraits;
+  typedef CvcLexerTraits CvcParserTraits;
+
+  /* If you don't want the override it is like this.
+     class TLexer;
+     class TParser;
+     typedef antlr3::Traits< TLexer, TParser > TLexerTraits;
+     typedef TLexerTraits TParserTraits;
+  */
+}
+
 @parser::members {
 
 // Idea and code guidance from Sam Harwell,
@@ -229,81 +272,81 @@ tokens {
 bool isRightToLeft(int type) {
   // return true here for any operators that are right-to-left associative
   switch(type) {
-  case IMPLIES_TOK: return true;
+  case CvcLexerTokens::IMPLIES_TOK: return true;
   default: return false;
   }
 }/* isRightToLeft() */
 
 int getOperatorPrecedence(int type) {
   switch(type) {
-  case BITVECTOR_TOK: return 1;
+  case CvcLexerTokens::BITVECTOR_TOK: return 1;
   //case DOT:
-  case LPAREN:
-  case LBRACE: return 2;
-  case LBRACKET: return 3;
-  case ARROW_TOK: return 4;
-  case IS_INTEGER_TOK: return 5;
-  case BVSLT_TOK:
-  case BVSLE_TOK:
-  case BVSGT_TOK:
-  case BVSGE_TOK: return 6;
-  case BVLT_TOK:
-  case BVLE_TOK:
-  case BVGT_TOK:
-  case BVGE_TOK: return 7;
-  case LEFTSHIFT_TOK:
-  case RIGHTSHIFT_TOK: return 8;
-  case SX_TOK:
-  case BVZEROEXTEND_TOK:
-  case BVREPEAT_TOK:
-  case BVROTL_TOK:
-  case BVROTR_TOK: return 9;
-  case BVUDIV_TOK:
-  case BVSDIV_TOK:
-  case BVUREM_TOK:
-  case BVSREM_TOK:
-  case BVSMOD_TOK:
-  case BVSHL_TOK:
-  case BVASHR_TOK:
-  case BVLSHR_TOK: return 10;
-  case BVUMINUS_TOK:
-  case BVPLUS_TOK:
-  case BVSUB_TOK: return 11;
-  case BVNEG_TOK: return 12;
-  case BVXNOR_TOK: return 13;
-  case BVNOR_TOK:
-  case BVCOMP_TOK: return 14;
-  case BVNAND_TOK: return 15;
-  case BVXOR_TOK: return 16;
-  case BVAND_TOK: return 17;
-  case BAR: return 18;
-  case CONCAT_TOK: return 19;
+  case CvcLexerTokens::LPAREN:
+  case CvcLexerTokens::LBRACE: return 2;
+  case CvcLexerTokens::LBRACKET: return 3;
+  case CvcLexerTokens::ARROW_TOK: return 4;
+  case CvcLexerTokens::IS_INTEGER_TOK: return 5;
+  case CvcLexerTokens::BVSLT_TOK:
+  case CvcLexerTokens::BVSLE_TOK:
+  case CvcLexerTokens::BVSGT_TOK:
+  case CvcLexerTokens::BVSGE_TOK: return 6;
+  case CvcLexerTokens::BVLT_TOK:
+  case CvcLexerTokens::BVLE_TOK:
+  case CvcLexerTokens::BVGT_TOK:
+  case CvcLexerTokens::BVGE_TOK: return 7;
+  case CvcLexerTokens::LEFTSHIFT_TOK:
+  case CvcLexerTokens::RIGHTSHIFT_TOK: return 8;
+  case CvcLexerTokens::SX_TOK:
+  case CvcLexerTokens::BVZEROEXTEND_TOK:
+  case CvcLexerTokens::BVREPEAT_TOK:
+  case CvcLexerTokens::BVROTL_TOK:
+  case CvcLexerTokens::BVROTR_TOK: return 9;
+  case CvcLexerTokens::BVUDIV_TOK:
+  case CvcLexerTokens::BVSDIV_TOK:
+  case CvcLexerTokens::BVUREM_TOK:
+  case CvcLexerTokens::BVSREM_TOK:
+  case CvcLexerTokens::BVSMOD_TOK:
+  case CvcLexerTokens::BVSHL_TOK:
+  case CvcLexerTokens::BVASHR_TOK:
+  case CvcLexerTokens::BVLSHR_TOK: return 10;
+  case CvcLexerTokens::BVUMINUS_TOK:
+  case CvcLexerTokens::BVPLUS_TOK:
+  case CvcLexerTokens::BVSUB_TOK: return 11;
+  case CvcLexerTokens::BVNEG_TOK: return 12;
+  case CvcLexerTokens::BVXNOR_TOK: return 13;
+  case CvcLexerTokens::BVNOR_TOK:
+  case CvcLexerTokens::BVCOMP_TOK: return 14;
+  case CvcLexerTokens::BVNAND_TOK: return 15;
+  case CvcLexerTokens::BVXOR_TOK: return 16;
+  case CvcLexerTokens::BVAND_TOK: return 17;
+  case CvcLexerTokens::BAR: return 18;
+  case CvcLexerTokens::CONCAT_TOK: return 19;
 //case UMINUS_TOK: return 20;
-  case WITH_TOK: return 21;
-  case EXP_TOK: return 22;
-  case STAR_TOK:
-  case INTDIV_TOK:
-  case DIV_TOK:
-  case MOD_TOK: return 23;
-  case PLUS_TOK:
-  case MINUS_TOK: return 24;
-  case LEQ_TOK:
-  case LT_TOK:
-  case GEQ_TOK:
-  case GT_TOK:
-  case MEMBER_TOK: return 25;
-  case EQUAL_TOK:
-  case DISEQUAL_TOK: return 26;
-  case NOT_TOK: return 27;
-  case AND_TOK: return 28;
-  case OR_TOK:
-  case XOR_TOK: return 29;
-  case IMPLIES_TOK: return 30;// right-to-left
-  case IFF_TOK: return 31;
-  case FORALL_TOK:
-  case EXISTS_TOK: return 32;
-  case ASSIGN_TOK:
-  case IN_TOK: return 33;
+  case CvcLexerTokens::WITH_TOK: return 21;
+  case CvcLexerTokens::EXP_TOK: return 22;
+  case CvcLexerTokens::STAR_TOK:
+  case CvcLexerTokens::INTDIV_TOK:
+  case CvcLexerTokens::DIV_TOK:
+  case CvcLexerTokens::MOD_TOK: return 23;
+  case CvcLexerTokens::PLUS_TOK:
+  case CvcLexerTokens::MINUS_TOK: return 24;
+  case CvcLexerTokens::LEQ_TOK:
+  case CvcLexerTokens::LT_TOK:
+  case CvcLexerTokens::GEQ_TOK:
+  case CvcLexerTokens::GT_TOK:
+  case CvcLexerTokens::FLOOR_TOK: return 25;
+  case CvcLexerTokens::EQUAL_TOK:
+  case CvcLexerTokens::DISEQUAL_TOK: return 26;
+  case CvcLexerTokens::NOT_TOK: return 27;
+  case CvcLexerTokens::AND_TOK: return 28;
+  case CvcLexerTokens::OR_TOK:
+  case CvcLexerTokens::XOR_TOK: return 29;
+  case CvcLexerTokens::IMPLIES_TOK: return 30;// right-to-left
+  case CvcLexerTokens::IFF_TOK: return 31;
+  case CvcLexerTokens::FORALL_TOK:
+  case CvcLexerTokens::EXISTS_TOK: return 32;
+  case CvcLexerTokens::ASSIGN_TOK:
+  case CvcLexerTokens::IN_TOK: return 33;
 
   default:
     std::stringstream ss;
@@ -317,34 +360,34 @@ Kind getOperatorKind(int type, bool& negate) {
 
   switch(type) {
     // booleanBinop
-  case IFF_TOK: return kind::IFF;
-  case IMPLIES_TOK: return kind::IMPLIES;
-  case OR_TOK: return kind::OR;
-  case XOR_TOK: return kind::XOR;
-  case AND_TOK: return kind::AND;
+  case CvcLexerTokens::IFF_TOK: return kind::IFF;
+  case CvcLexerTokens::IMPLIES_TOK: return kind::IMPLIES;
+  case CvcLexerTokens::OR_TOK: return kind::OR;
+  case CvcLexerTokens::XOR_TOK: return kind::XOR;
+  case CvcLexerTokens::AND_TOK: return kind::AND;
 
     // comparisonBinop
-  case EQUAL_TOK: return kind::EQUAL;
-  case DISEQUAL_TOK: negate = true; return kind::EQUAL;
-  case GT_TOK: return kind::GT;
-  case GEQ_TOK: return kind::GEQ;
-  case LT_TOK: return kind::LT;
-  case LEQ_TOK: return kind::LEQ;
-  case MEMBER_TOK: return kind::MEMBER;
+  case CvcLexerTokens::EQUAL_TOK: return kind::EQUAL;
+  case CvcLexerTokens::DISEQUAL_TOK: negate = true; return kind::EQUAL;
+  case CvcLexerTokens::GT_TOK: return kind::GT;
+  case CvcLexerTokens::GEQ_TOK: return kind::GEQ;
+  case CvcLexerTokens::LT_TOK: return kind::LT;
+  case CvcLexerTokens::LEQ_TOK: return kind::LEQ;
+  case CvcLexerTokens::MEMBER_TOK: return kind::MEMBER;
 
     // arithmeticBinop
-  case PLUS_TOK: return kind::PLUS;
-  case MINUS_TOK: return kind::MINUS;
-  case STAR_TOK: return kind::MULT;
-  case INTDIV_TOK: return kind::INTS_DIVISION;
-  case MOD_TOK: return kind::INTS_MODULUS;
-  case DIV_TOK: return kind::DIVISION;
-  case EXP_TOK: return kind::POW;
+  case CvcLexerTokens::PLUS_TOK: return kind::PLUS;
+  case CvcLexerTokens::MINUS_TOK: return kind::MINUS;
+  case CvcLexerTokens::STAR_TOK: return kind::MULT;
+  case CvcLexerTokens::INTDIV_TOK: return kind::INTS_DIVISION;
+  case CvcLexerTokens::MOD_TOK: return kind::INTS_MODULUS;
+  case CvcLexerTokens::DIV_TOK: return kind::DIVISION;
+  case CvcLexerTokens::EXP_TOK: return kind::POW;
 
     // bvBinop
-  case CONCAT_TOK: return kind::BITVECTOR_CONCAT;
-  case BAR: return kind::BITVECTOR_OR;
-  case BVAND_TOK: return kind::BITVECTOR_AND;
+  case CvcLexerTokens::CONCAT_TOK: return kind::BITVECTOR_CONCAT;
+  case CvcLexerTokens::BAR: return kind::BITVECTOR_OR;
+  case CvcLexerTokens::BVAND_TOK: return kind::BITVECTOR_AND;
   }
 
   std::stringstream ss;
@@ -374,7 +417,7 @@ unsigned findPivot(const std::vector<unsigned>& operators,
   return pivot;
 }/* findPivot() */
 
-Expr createPrecedenceTree(Parser* parser, ExprManager* em,
+Expr createPrecedenceTree(CVC4::parser::Parser* parser, ExprManager* em,
                           const std::vector<CVC4::Expr>& expressions,
                           const std::vector<unsigned>& operators,
                           unsigned startIndex, unsigned stopIndex) {
@@ -415,7 +458,7 @@ Expr createPrecedenceTree(Parser* parser, ExprManager* em,
   return negate ? em->mkExpr(kind::NOT, e) : e;
 }/* createPrecedenceTree() recursive variant */
 
-Expr createPrecedenceTree(Parser* parser, ExprManager* em,
+Expr createPrecedenceTree(CVC4::parser::Parser* parser, ExprManager* em,
                           const std::vector<CVC4::Expr>& expressions,
                           const std::vector<unsigned>& operators) {
   if(Debug.isOn("prec") && operators.size() > 1) {
@@ -472,21 +515,26 @@ Expr addNots(ExprManager* em, size_t n, Expr e) {
 #  define ANTLR3_INLINE_INPUT_8BIT
 #endif /* CVC4_COMPETITION_MODE && !CVC4_SMTCOMP_APPLICATION_TRACK */
 
-#include "parser/antlr_tracing.h"
 #include "util/integer.h"
-#include "parser/antlr_input.h"
 #include "parser/parser.h"
 
 }/* @lexer::includes */
+
+@lexer::postinclude {
+
+#include "parser/antlr_input.h"
+
+}/* @lexer::postinclude */
 
 @parser::includes {
 
 #include <stdint.h>
 #include <cassert>
+
 #include "expr/command.h"
-#include "parser/parser.h"
 #include "util/subrange_bound.h"
-#include "parser/antlr_tracing.h"
+#include "parser/parser.h"
+#include "parser/cvc/generated/CvcLexer.hpp"
 
 namespace CVC4 {
   class Expr;
@@ -568,7 +616,7 @@ using namespace CVC4::parser;
 /* These need to be macros so they can refer to the PARSER macro, which will be defined
  * by ANTLR *after* this section. (If they were functions, PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Parser*)PARSER->super)
+#define PARSER_STATE (this->super)
 #undef EXPR_MANAGER
 #define EXPR_MANAGER PARSER_STATE->getExprManager()
 #undef MK_EXPR
@@ -605,7 +653,7 @@ parseExpr returns [CVC4::Expr expr = CVC4::Expr()]
 parseCommand returns [CVC4::Command* cmd = NULL]
   : c=command { $cmd = c; }
   | LPAREN IDENTIFIER
-    { std::string s = AntlrInput::tokenText($IDENTIFIER);
+    { std::string s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER);
       if(s == "benchmark") {
         PARSER_STATE->parseError("In CVC4 presentation language mode, but SMT-LIBv1 format detected.  Use --lang smt1 for SMT-LIBv1 support.");
       } else if(s == "set" || s == "get" || s == "declare" ||
@@ -657,7 +705,7 @@ mainCommand[CVC4::Command*& cmd]
   std::string id;
   Type t;
   std::vector<CVC4::Datatype> dts;
-  Debug("parser-extra") << "command: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "command: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
   std::string s;
 }
     /* our bread & butter */
@@ -668,7 +716,7 @@ mainCommand[CVC4::Command*& cmd]
 
     /* options */
   | OPTION_TOK
-    ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
     ( symbolicExpr[sexpr]
       { if(s == "logic") {
           cmd = new SetBenchmarkLogicCommand(sexpr.getValue());
@@ -715,7 +763,7 @@ mainCommand[CVC4::Command*& cmd]
       cmd = new DatatypeDeclarationCommand(PARSER_STATE->mkMutualDatatypeTypes(dts)); }
 
   | CONTEXT_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { UNSUPPORTED("CONTEXT command"); }
     | { UNSUPPORTED("CONTEXT command"); }
     )
@@ -745,24 +793,24 @@ mainCommand[CVC4::Command*& cmd]
     /* Like the --debug command line option, DBG turns on both tracing
      * and debugging. */
   | DBG_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { Debug.on(s); Trace.on(s); }
     | { Message() << "Please specify what to debug." << std::endl; }
     )
 
   | TRACE_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { Trace.on(s); }
     | { Message() << "Please specify something to trace." << std::endl; }
     )
   | UNTRACE_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { Trace.off(s); }
     | { Message() << "Please specify something to untrace." << std::endl; }
     )
 
   | HELP_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { Message() << "No help available for `" << s << "'." << std::endl; }
     | { Message() << "Please use --help at the command line for help." << std::endl; }
     )
@@ -788,7 +836,7 @@ mainCommand[CVC4::Command*& cmd]
     { cmd = new QuitCommand(); }
 
   | INCLUDE_TOK
-    ( ( str[s] | IDENTIFIER { s = AntlrInput::tokenText($IDENTIFIER); } )
+    ( ( str[s] | IDENTIFIER { s = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER); } )
       { UNSUPPORTED("INCLUDE command"); }
     | { PARSER_STATE->parseError("No filename given to INCLUDE command"); }
     )
@@ -829,19 +877,19 @@ simpleSymbolicExpr[CVC4::SExpr& sexpr]
   CVC4::Rational r;
 }
   : INTEGER_LITERAL
-    { sexpr = SExpr(Integer(AntlrInput::tokenText($INTEGER_LITERAL))); }
+    { sexpr = SExpr(Integer(AntlrInput<CvcLexerTraits>::tokenText($INTEGER_LITERAL))); }
   | MINUS_TOK INTEGER_LITERAL
-    { sexpr = SExpr(-Integer(AntlrInput::tokenText($INTEGER_LITERAL))); }
+    { sexpr = SExpr(-Integer(AntlrInput<CvcLexerTraits>::tokenText($INTEGER_LITERAL))); }
   | DECIMAL_LITERAL
-    { sexpr = SExpr(AntlrInput::tokenToRational($DECIMAL_LITERAL)); }
+    { sexpr = SExpr(AntlrInput<CvcLexerTraits>::tokenToRational($DECIMAL_LITERAL)); }
   | HEX_LITERAL
-    { sexpr = SExpr(AntlrInput::tokenText($HEX_LITERAL)); }
+    { sexpr = SExpr(AntlrInput<CvcLexerTraits>::tokenText($HEX_LITERAL)); }
   | BINARY_LITERAL
-    { sexpr = SExpr(AntlrInput::tokenText($BINARY_LITERAL)); }
+    { sexpr = SExpr(AntlrInput<CvcLexerTraits>::tokenText($BINARY_LITERAL)); }
   | str[s]
     { sexpr = SExpr(s); }
   | IDENTIFIER
-    { sexpr = SExpr(AntlrInput::tokenText($IDENTIFIER)); }
+    { sexpr = SExpr(AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER)); }
   ;
 
 symbolicExpr[CVC4::SExpr& sexpr]
@@ -860,7 +908,7 @@ toplevelDeclaration[CVC4::Command*& cmd]
 @init {
   std::vector<std::string> ids;
   Type t;
-  Debug("parser-extra") << "declaration: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "declaration: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : identifierList[ids,CHECK_NONE,SYM_VARIABLE] COLON
     ( declareVariables[cmd,t,ids,true]
@@ -964,7 +1012,7 @@ declareTypes[CVC4::Command*& cmd, const std::vector<std::string>& idList]
 declareVariables[CVC4::Command*& cmd, CVC4::Type& t, const std::vector<std::string>& idList, bool topLevel]
 @init {
   Expr f;
-  Debug("parser-extra") << "declType: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "declType: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
 }
     /* A variable declaration (or definition) */
   : type[t,CHECK_DECLARED] ( EQUAL_TOK formula[f] )?
@@ -1052,7 +1100,7 @@ identifier[std::string& id,
            CVC4::parser::DeclarationCheck check,
            CVC4::parser::SymbolType type]
   : IDENTIFIER
-    { id = AntlrInput::tokenText($IDENTIFIER);
+    { id = AntlrInput<CvcLexerTraits>::tokenText($IDENTIFIER);
       PARSER_STATE->checkDeclaration(id, check, type); }
   ;
 
@@ -1135,7 +1183,7 @@ restrictedTypePossiblyFunctionLHS[CVC4::Type& t,
   std::vector<Type> types;
   std::vector< std::pair<std::string, Type> > typeIds;
   //SymbolTable* symtab;
-  Parser* parser;
+  CVC4::parser::Parser* parser;
   lhs = false;
 }
     /* named types */
@@ -1283,7 +1331,7 @@ typeLetDecl[CVC4::parser::DeclarationCheck check]
  */
 formula[CVC4::Expr& f]
 @init {
-  Debug("parser-extra") << "formula: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "formula: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
   Expr f2;
   std::vector<CVC4::Expr> expressions;
   std::vector<unsigned> operators;
@@ -1418,7 +1466,7 @@ letDecl
 
 booleanBinop[unsigned& op]
 @init {
-  op = LT(1)->getType(LT(1));
+  op = LT(1)->getType();
 }
   : IFF_TOK
   | IMPLIES_TOK
@@ -1441,7 +1489,7 @@ comparison[CVC4::Expr& f]
 
 comparisonBinop[unsigned& op]
 @init {
-  op = LT(1)->getType(LT(1));
+  op = LT(1)->getType();
 }
   : EQUAL_TOK
   | DISEQUAL_TOK
@@ -1454,7 +1502,7 @@ comparisonBinop[unsigned& op]
 
 arithmeticBinop[unsigned& op]
 @init {
-  op = LT(1)->getType(LT(1));
+  op = LT(1)->getType();
 }
   : PLUS_TOK
   | MINUS_TOK
@@ -1585,7 +1633,7 @@ bvBinaryOpTerm[CVC4::Expr& f]
   ;
 bvBinop[unsigned& op]
 @init {
-  op = LT(1)->getType(LT(1));
+  op = LT(1)->getType();
 }
   : CONCAT_TOK
   | BAR // bitwise OR
@@ -1897,7 +1945,7 @@ simpleTerm[CVC4::Expr& f]
   std::vector<Expr> args;
   std::vector<std::string> names;
   Expr e;
-  Debug("parser-extra") << "term: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "term: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
   Type t, t2;
 }
     /* if-then-else */
@@ -1974,16 +2022,16 @@ simpleTerm[CVC4::Expr& f]
     /* syntactic predicate: never match INTEGER.DIGIT as an integer and a dot!
      * This is a rational constant!  Otherwise the parser interprets it as a tuple
      * selector! */
-  | DECIMAL_LITERAL { f = MK_CONST(AntlrInput::tokenToRational($DECIMAL_LITERAL)); }
-  | INTEGER_LITERAL { f = MK_CONST(AntlrInput::tokenToInteger($INTEGER_LITERAL)); }
+  | DECIMAL_LITERAL { f = MK_CONST(AntlrInput<CvcLexerTraits>::tokenToRational($DECIMAL_LITERAL)); }
+  | INTEGER_LITERAL { f = MK_CONST(AntlrInput<CvcLexerTraits>::tokenToInteger($INTEGER_LITERAL)); }
     /* bitvector literals */
   | HEX_LITERAL
-    { assert( AntlrInput::tokenText($HEX_LITERAL).find("0hex") == 0 );
-      std::string hexString = AntlrInput::tokenTextSubstr($HEX_LITERAL, 4);
+    { assert( AntlrInput<CvcLexerTraits>::tokenText($HEX_LITERAL).find("0hex") == 0 );
+      std::string hexString = AntlrInput<CvcLexerTraits>::tokenTextSubstr($HEX_LITERAL, 4);
       f = MK_CONST( BitVector(hexString, 16) ); }
   | BINARY_LITERAL
-    { assert( AntlrInput::tokenText($BINARY_LITERAL).find("0bin") == 0 );
-      std::string binString = AntlrInput::tokenTextSubstr($BINARY_LITERAL, 4);
+    { assert( AntlrInput<CvcLexerTraits>::tokenText($BINARY_LITERAL).find("0bin") == 0 );
+      std::string binString = AntlrInput<CvcLexerTraits>::tokenTextSubstr($BINARY_LITERAL, 4);
       f = MK_CONST( BitVector(binString, 2) ); }
     /* record literals */
   | PARENHASH recordEntry[name,e] { names.push_back(name); args.push_back(e); }
@@ -2033,7 +2081,7 @@ recordEntry[std::string& name, CVC4::Expr& ex]
 iteTerm[CVC4::Expr& f]
 @init {
   std::vector<Expr> args;
-  Debug("parser-extra") << "ite: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "ite: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : IF_TOK formula[f] { args.push_back(f); }
     THEN_TOK formula[f] { args.push_back(f); }
@@ -2048,7 +2096,7 @@ iteTerm[CVC4::Expr& f]
 iteElseTerm[CVC4::Expr& f]
 @init {
   std::vector<Expr> args;
-  Debug("parser-extra") << "else: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser-extra") << "else: " << AntlrInput<CvcLexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : ELSE_TOK formula[f]
   | ELSEIF_TOK iteCondition = formula[f] { args.push_back(f); }
@@ -2143,7 +2191,7 @@ IDENTIFIER : (ALPHA | '_') (ALPHA | DIGIT | '_' | '\'' | '\\' | '?' | '$' | '~')
  */
 numeral returns [unsigned k = 0]
   : INTEGER_LITERAL
-    { $k = AntlrInput::tokenToUnsigned($INTEGER_LITERAL); }
+    { $k = AntlrInput<CvcLexerTraits>::tokenToUnsigned($INTEGER_LITERAL); }
   ;
 
 /**
@@ -2151,9 +2199,9 @@ numeral returns [unsigned k = 0]
  */
 integer returns [CVC4::Rational k = 0]
   : INTEGER_LITERAL
-    { $k = AntlrInput::tokenToInteger($INTEGER_LITERAL); }
+    { $k = AntlrInput<CvcLexerTraits>::tokenToInteger($INTEGER_LITERAL); }
   | MINUS_TOK INTEGER_LITERAL
-    { $k = -AntlrInput::tokenToInteger($INTEGER_LITERAL); }
+    { $k = -AntlrInput<CvcLexerTraits>::tokenToInteger($INTEGER_LITERAL); }
   ;
 
 /**
@@ -2161,7 +2209,7 @@ integer returns [CVC4::Rational k = 0]
  */
 str[std::string& s]
   : STRING_LITERAL
-    { s = AntlrInput::tokenText($STRING_LITERAL);
+    { s = AntlrInput<CvcLexerTraits>::tokenText($STRING_LITERAL);
       /* strip off the quotes */
       s = s.substr(1, s.size() - 2);
     }
@@ -2237,12 +2285,12 @@ fragment HEX_DIGIT : DIGIT | 'a'..'f' | 'A'..'F';
 /**
  * Matches and skips whitespace in the input and ignores it.
  */
-WHITESPACE : (' ' | '\t' | '\f' | '\r' | '\n')+ { SKIP(); };
+WHITESPACE : (' ' | '\t' | '\f' | '\r' | '\n')+ { skip(); };
 
 /**
  * Matches the comments and ignores them
  */
-COMMENT : '%' (~('\n' | '\r'))* { SKIP(); };
+COMMENT : '%' (~('\n' | '\r'))* { skip(); };
 
 /**
  * Matches an allowed escaped character.

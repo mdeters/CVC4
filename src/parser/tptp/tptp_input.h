@@ -16,12 +16,13 @@
 
 #include "cvc4parser_private.h"
 
+#include "parser/antlr_input.h"
+
 #ifndef __CVC4__PARSER__TPTP_INPUT_H
 #define __CVC4__PARSER__TPTP_INPUT_H
 
-#include "parser/antlr_input.h"
-#include "parser/tptp/generated/TptpLexer.h"
-#include "parser/tptp/generated/TptpParser.h"
+#include "parser/tptp/generated/TptpLexer.hpp"
+#include "parser/tptp/generated/TptpParser.hpp"
 
 // extern void TptpParserSetAntlrParser(CVC4::parser::AntlrParser* newAntlrParser);
 
@@ -35,14 +36,14 @@ namespace parser {
 
 class Tptp;
 
-class TptpInput : public AntlrInput {
+class TptpInput : public AntlrInput<TptpLexerTraits> {
   typedef AntlrInput super;
 
   /** The ANTLR3 TPTP lexer for the input. */
-  pTptpLexer d_pTptpLexer;
+  TptpLexer* d_pTptpLexer;
 
   /** The ANTLR3 CVC parser for the input. */
-  pTptpParser d_pTptpParser;
+  TptpParser* d_pTptpParser;
 
   /**
    * Initialize the class. Called from the constructors once the input
@@ -57,7 +58,7 @@ public:
    *
    * @param inputStream the input stream to use
    */
-  TptpInput(AntlrInputStream& inputStream);
+  TptpInput(AntlrInputStream<TptpLexerTraits>& inputStream);
 
   /** Destructor. Frees the lexer and the parser. */
   virtual ~TptpInput();

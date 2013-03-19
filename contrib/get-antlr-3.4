@@ -41,75 +41,25 @@ mkdir -p antlr-3.4/share/java
 mkdir -p antlr-3.4/bin
 mkdir -p antlr-3.4/src
 cd antlr-3.4
-webget http://www.antlr3.org/download/antlr-3.4-complete.jar share/java/antlr-3.4-complete.jar 
-webget http://www.antlr3.org/download/C/libantlr3c-3.4.tar.gz src/libantlr3c-3.4.tar.gz
+webget http://www.antlr.org/wiki/download/attachments/29130826/antlr-3.4-with-cpp.jar share/java/antlr-3.4-with-cpp.jar
+webget http://www.antlr.org/wiki/download/attachments/29130826/Cpp.tar.gz src/Cpp.tar.gz
 tee bin/antlr3 <<EOF
 #!/bin/bash
-export CLASSPATH=`pwd`/share/java/antlr-3.4-complete.jar:\$CLASSPATH
+export CLASSPATH=`pwd`/share/java/antlr-3.4-with-cpp.jar:\$CLASSPATH
 exec java org.antlr.Tool "\$@"
 EOF
 chmod a+x bin/antlr3
 cd src
-gunzip -f libantlr3c-3.4.tar.gz
-tar xfv libantlr3c-3.4.tar
-cd libantlr3c-3.4
-
-if [ ${MACHINE_TYPE} == 'x86_64' ]; then
-  # 64-bit stuff here
-  ./configure --enable-64bit --disable-shared --disable-antlrdebug --prefix=`pwd`/../.. $ANTLR_CONFIGURE_ARGS
-else
-  # 32-bit stuff here
-  ./configure --disable-shared --disable-antlrdebug --prefix=`pwd`/../.. $ANTLR_CONFIGURE_ARGS
-fi
-
-cp Makefile Makefile.orig
-sed 's,^\(CFLAGS = .*\),\1 -fexceptions,' Makefile.orig > Makefile
-make
-make install
-cd ../..
-mv lib/libantlr3c.a lib/libantlr3c-static.a
-
-cd src/libantlr3c-3.4
-make clean
-
-if [ ${MACHINE_TYPE} == 'x86_64' ]; then
-  # 64-bit stuff here
-  ./configure --enable-64bit --with-pic --disable-shared --disable-antlrdebug --prefix=`pwd`/../.. $ANTLR_CONFIGURE_ARGS
-else
-  # 32-bit stuff here
-  ./configure --with-pic --disable-shared --disable-antlrdebug --prefix=`pwd`/../.. $ANTLR_CONFIGURE_ARGS
-fi
-
-cp Makefile Makefile.orig
-sed 's,^\(CFLAGS = .*\),\1 -fexceptions,' Makefile.orig > Makefile
-make
-make install
-cd ../..
-mv lib/libantlr3c.la lib/libantlr3c.la.orig
-awk '/^old_library=/ {print "old_library='\''libantlr3c-static.a'\''"} /^library_names=/ {print "library_names='\''libantlr3c.a'\''"} !/^old_library=/ && !/^library_names=/ {print}' < lib/libantlr3c.la.orig > lib/libantlr3c.la
+gunzip -f Cpp.tar.gz
+tar xf Cpp.tar
+rm -f ../include
+ln -s src/Cpp/include ../include
 set +x
-cd ..
+cd ../..
 
 # echo
 # echo Invalidating generated parsers..
 # touch src/parser/*/*.g
-
-if [ ${MACHINE_TYPE} == 'x86_64' ]; then
-  # 64-bit stuff here
-  echo ============== WARNING ====================
-  echo The script guessed that this machine is 64 bit.
-  echo If antlr should be built as 32 bit \(i.e. -m32\),
-  echo please rerun the script as
-  echo     MACHINE_TYPE=\"x86\" ./get-antlr3.4
-
-else
-  # 32-bit stuff here
-  echo ============== WARNING ==================== 
-  echo The script guessed that this machine is 32 bit.
-  echo If antlr should be built as 64 bit \(i.e. -m64\),
-  echo please rerun the script as
-  echo     MACHINE_TYPE=\"x86_64\" ./get-antlr3.4
-fi
 
 echo
 echo ===================== Now configure CVC4 with =====================

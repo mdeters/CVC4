@@ -16,12 +16,13 @@
 
 #include "cvc4parser_private.h"
 
+#include "parser/antlr_input.h"
+
 #ifndef __CVC4__PARSER__SMT2_INPUT_H
 #define __CVC4__PARSER__SMT2_INPUT_H
 
-#include "parser/antlr_input.h"
-#include "parser/smt2/generated/Smt2Lexer.h"
-#include "parser/smt2/generated/Smt2Parser.h"
+#include "parser/smt2/generated/Smt2Lexer.hpp"
+#include "parser/smt2/generated/Smt2Parser.hpp"
 
 // extern void Smt2ParserSetAntlrParser(CVC4::parser::AntlrParser* newAntlrParser);
 
@@ -35,14 +36,14 @@ namespace parser {
 
 class Smt2;
 
-class Smt2Input : public AntlrInput {
+class Smt2Input : public AntlrInput<Smt2LexerTraits> {
   typedef AntlrInput super;
 
   /** The ANTLR3 SMT2 lexer for the input. */
-  pSmt2Lexer d_pSmt2Lexer;
+  Smt2Lexer* d_pSmt2Lexer;
 
   /** The ANTLR3 SMT2 parser for the input. */
-  pSmt2Parser d_pSmt2Parser;
+  Smt2Parser* d_pSmt2Parser;
 
   /**
    * Initialize the class. Called from the constructors once the input
@@ -57,7 +58,7 @@ public:
    *
    * @param inputStream the input stream to use
    */
-  Smt2Input(AntlrInputStream& inputStream);
+  Smt2Input(AntlrInputStream<Smt2LexerTraits>& inputStream);
 
   /** Destructor. Frees the lexer and the parser. */
   virtual ~Smt2Input();

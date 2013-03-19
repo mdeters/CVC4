@@ -18,8 +18,16 @@
 #include "parser/parser.h"
 #include "parser/tptp/tptp.h"
 #include "parser/antlr_input.h"
+#include "parser/tptp/generated/TptpLexer.hpp"
 
 // ANTLR defines these, which is really bad!
+#ifdef true
+#error true is defined
+#endif
+#ifdef faslse
+#error false is defined
+#endif
+
 #undef true
 #undef false
 
@@ -92,23 +100,19 @@ void Tptp::addTheory(Theory theory) {
 /* The include are managed in the lexer but called in the parser */
 // Inspired by http://www.antlr3.org/api/C/interop.html
 
-bool newInputStream(std::string fileName, pANTLR3_LEXER lexer) {
+bool newInputStream(std::string fileName, TptpLexerTraits::BaseLexerType* lexer) {
   Debug("parser") << "Including " << fileName << std::endl;
   // Create a new input stream and take advantage of built in stream stacking
-  // in C target runtime.
+  // in C++ target runtime.
   //
-  pANTLR3_INPUT_STREAM    in;
-#ifdef CVC4_ANTLR3_OLD_INPUT_STREAM
-  in = antlr3AsciiFileStreamNew((pANTLR3_UINT8) fileName.c_str());
-#else /* CVC4_ANTLR3_OLD_INPUT_STREAM */
-  in = antlr3FileStreamNew((pANTLR3_UINT8) fileName.c_str(), ANTLR3_ENC_8BIT);
-#endif /* CVC4_ANTLR3_OLD_INPUT_STREAM */
+  TptpLexerTraits::InputStreamType* in;
+  in = new TptpLexerTraits::InputStreamType((const ANTLR_UINT8*) fileName.c_str(), ANTLR_ENC_8BIT);
   if(in == NULL) {
     Debug("parser") << "Can't open " << fileName << std::endl;
     return false;
   }
   // Same thing as the predefined PUSHSTREAM(in);
-  lexer->pushCharStream(lexer,in);
+  lexer->pushCharStream(in);
   // restart it
   //lexer->rec->state->tokenStartCharIndex	= -10;
   //lexer->emit(lexer);
@@ -141,22 +145,8 @@ void Tptp::includeFile(std::string fileName) {
   }
 
   // Get the lexer
-  AntlrInput * ai = static_cast<AntlrInput *>(getInput());
-  pANTLR3_LEXER lexer = ai->getAntlr3Lexer();
-
-  // set up popCharStream - would be necessary for handling symbol
-  // filtering in inclusions
-  /*
-  if(d_oldPopCharStream == NULL) {
-    d_oldPopCharStream = lexer->popCharStream;
-    lexer->popCharStream = myPopCharStream;
-  }
-  */
-
-  // push the inclusion scope; will be popped by our special popCharStream
-  // would be necessary for handling symbol filtering in inclusions
-  //pushScope();
-
+  AntlrInput<TptpLexerTraits>* ai = static_cast< AntlrInput<TptpLexerTraits>* >(getInput());
+  TptpLexerTraits::BaseLexerType* lexer = ai->getAntlr3Lexer();
   // get the name of the current stream "Does it work inside an include?"
   const std::string inputName = ai->getInputStreamName();
 

@@ -14,7 +14,7 @@
  ** [[ Add file-specific comments here ]]
  **/
 
-#include <antlr3.h>
+#include <antlr3.hpp>
 
 #include "parser/tptp/tptp_input.h"
 #include "expr/expr_manager.h"
@@ -22,48 +22,48 @@
 #include "parser/parser.h"
 #include "parser/parser_exception.h"
 #include "parser/tptp/tptp.h"
-#include "parser/tptp/generated/TptpLexer.h"
-#include "parser/tptp/generated/TptpParser.h"
+#include "parser/tptp/generated/TptpLexer.hpp"
+#include "parser/tptp/generated/TptpParser.hpp"
 
 namespace CVC4 {
 namespace parser {
 
 /* Use lookahead=2 */
-TptpInput::TptpInput(AntlrInputStream& inputStream) :
+TptpInput::TptpInput(AntlrInputStream<TptpLexerTraits>& inputStream) :
   AntlrInput(inputStream, 2) {
-  pANTLR3_INPUT_STREAM input = inputStream.getAntlr3InputStream();
-  assert( input != NULL );
+  TptpLexerTraits::InputStreamType* input = inputStream.getAntlr3InputStream();
+  assert(input != NULL);
 
-  d_pTptpLexer = TptpLexerNew(input);
-  if( d_pTptpLexer == NULL ) {
+  d_pTptpLexer = new TptpLexer(input);
+  if(d_pTptpLexer == NULL) {
     throw ParserException("Failed to create TPTP lexer.");
   }
 
-  setAntlr3Lexer( d_pTptpLexer->pLexer );
+  setAntlr3Lexer(d_pTptpLexer);
 
-  pANTLR3_COMMON_TOKEN_STREAM tokenStream = getTokenStream();
-  assert( tokenStream != NULL );
+  TptpLexerTraits::TokenStreamType* tokenStream = getTokenStream();
+  assert(tokenStream != NULL);
 
-  d_pTptpParser = TptpParserNew(tokenStream);
-  if( d_pTptpParser == NULL ) {
+  d_pTptpParser = new TptpParser(tokenStream);
+  if(d_pTptpParser == NULL) {
     throw ParserException("Failed to create TPTP parser.");
   }
 
-  setAntlr3Parser(d_pTptpParser->pParser);
+  setAntlr3Parser(d_pTptpParser);
 }
 
 
 TptpInput::~TptpInput() {
-  d_pTptpLexer->free(d_pTptpLexer);
-  d_pTptpParser->free(d_pTptpParser);
+  delete d_pTptpLexer;
+  delete d_pTptpParser;
 }
 
 Command* TptpInput::parseCommand() {
-  return d_pTptpParser->parseCommand(d_pTptpParser);
+  return d_pTptpParser->parseCommand();
 }
 
 Expr TptpInput::parseExpr() {
-  return d_pTptpParser->parseExpr(d_pTptpParser);
+  return d_pTptpParser->parseExpr();
 }
 
 }/* CVC4::parser namespace */

@@ -9,16 +9,16 @@
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
- ** \brief Parser for SMT-LIB input language.
+ ** \brief Parser for SMT-LIB v1.2 input language
  **
- ** Parser for SMT-LIB input language.
+ ** Parser for SMT-LIB v1.2 input language.
  **/
 
 grammar Smt1;
 
 options {
-  // C output for antlr
-  language = 'C';
+  // C++ output for antlr
+  language = 'Cpp';
 
   // Skip the default error handling, just break with exceptions
   // defaultErrorHandler = false;
@@ -28,6 +28,49 @@ options {
   // If you change this k, change it also in smt1_input.cpp !
   k = 2;
 }/* options */
+
+@lexer::namespace { CVC4 }
+@parser::namespace { CVC4 }
+
+@lexer::traits {
+  namespace parser { class Smt1Input; }
+
+  class Smt1Lexer;
+  class Smt1Parser;
+
+  template<class ImplTraits>
+  class Smt1Traits : public antlr3::CustomTraitsBase<ImplTraits> {
+  public:
+    typedef CVC4::parser::Smt1Input InputType;
+    class BaseParserType : public antlr3::Parser<ImplTraits> {
+    public:
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, state) {}
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::TokenStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Smt1 SuperType;
+      SuperType* super;
+    };
+    class BaseLexerType : public antlr3::Lexer<ImplTraits> {
+    public:
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, state) {}
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::InputStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Smt1 SuperType;
+      SuperType* super;
+    };
+    //for using the token stream which deleted the tokens, once it is reduced to a rule
+    //but it leaves the start and stop tokens. So they can be accessed as usual
+    static const bool TOKENS_ACCESSED_FROM_OWNING_RULE = true;
+  };
+
+  typedef antlr3::Traits< Smt1Lexer, Smt1Parser, Smt1Traits > Smt1LexerTraits;
+  typedef Smt1LexerTraits Smt1ParserTraits;
+
+  /* If you don't want the override it is like this.
+     class TLexer;
+     class TParser;
+     typedef antlr3::Traits< TLexer, TParser > TLexerTraits;
+     typedef TLexerTraits TParserTraits;
+  */
+}
 
 @header {
 /**
@@ -56,7 +99,8 @@ options {
 #  define ANTLR3_INLINE_INPUT_8BIT
 #endif /* CVC4_COMPETITION_MODE && !CVC4_SMTCOMP_APPLICATION_TRACK */
 
-#include "parser/antlr_tracing.h"
+#include "parser/smt1/smt1.h"
+
 }/* @lexer::includes */
 
 @parser::includes {
@@ -65,7 +109,7 @@ options {
 
 #include "expr/command.h"
 #include "parser/parser.h"
-#include "parser/antlr_tracing.h"
+#include "parser/smt1/generated/Smt1Lexer.hpp"
 
 namespace CVC4 {
   class Expr;
@@ -118,7 +162,7 @@ using namespace CVC4::parser;
 /* These need to be macros so they can refer to the PARSER macro, which will be defined
  * by ANTLR *after* this section. (If they were functions, PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Smt1*)PARSER->super)
+#define PARSER_STATE (this->super)
 #undef EXPR_MANAGER
 #define EXPR_MANAGER PARSER_STATE->getExprManager()
 #undef MK_EXPR
@@ -145,7 +189,7 @@ parseExpr returns [CVC4::parser::smt1::myExpr expr]
 parseCommand returns [CVC4::Command* cmd = NULL]
   : b = benchmark { $cmd = b; }
   | LPAREN_TOK c=IDENTIFIER
-    { std::string s = AntlrInput::tokenText($c);
+    { std::string s = AntlrInput<Smt1LexerTraits>::tokenText($c);
       if(s == "set" || s == "get") {
         PARSER_STATE->parseError(std::string("In SMT-LIBv1 mode, expected keyword `benchmark', but it looks like you're writing SMT-LIBv2.  Use --lang smt for SMT-LIBv2."));
       } else {
@@ -215,7 +259,7 @@ benchAttribute returns [CVC4::Command* smt_command = NULL]
       { ((CommandSequence*) smt_command)->addCommand(c); }
     )+ RPAREN_TOK
   | NOTES_TOK STRING_LITERAL
-    { smt_command = new CommentCommand(AntlrInput::tokenText($STRING_LITERAL)); }
+    { smt_command = new CommentCommand(AntlrInput<Smt1LexerTraits>::tokenText($STRING_LITERAL)); }
   | annotation[smt_command]
   ;
 
@@ -225,7 +269,7 @@ benchAttribute returns [CVC4::Command* smt_command = NULL]
  */
 annotatedFormula[CVC4::Expr& expr]
 @init {
-  Debug("parser") << "annotated formula: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser") << "annotated formula: " << AntlrInput<Smt1LexerTraits>::tokenText(LT(1)) << std::endl;
   Kind kind;
   std::string name;
   std::vector<Expr> args; /* = getExprVector(); */
@@ -306,15 +350,15 @@ annotatedFormula[CVC4::Expr& expr]
   | TRUE_TOK          { expr = MK_CONST(bool(true)); }
   | FALSE_TOK         { expr = MK_CONST(bool(false)); }
   | NUMERAL_TOK
-    { expr = MK_CONST( AntlrInput::tokenToInteger($NUMERAL_TOK) ); }
+    { expr = MK_CONST( AntlrInput<Smt1LexerTraits>::tokenToInteger($NUMERAL_TOK) ); }
   | RATIONAL_TOK
     { // FIXME: This doesn't work because an SMT rational is not a
       // valid GMP rational string
-      expr = MK_CONST( AntlrInput::tokenToRational($RATIONAL_TOK) ); }
+      expr = MK_CONST( AntlrInput<Smt1LexerTraits>::tokenToRational($RATIONAL_TOK) ); }
   | n = BITVECTOR_BV_CONST '[' size = NUMERAL_TOK ']'
-    { expr = MK_CONST( AntlrInput::tokenToBitvector($n, $size) ); }
+    { expr = MK_CONST( AntlrInput<Smt1LexerTraits>::tokenToBitvector($n, $size) ); }
   | n = BITVECTOR1_BV_CONST
-    { unsigned int bit = AntlrInput::tokenText($n)[3] - '0';
+    { unsigned int bit = AntlrInput<Smt1LexerTraits>::tokenText($n)[3] - '0';
       expr = MK_CONST( BitVector(1, bit) );
     }
     // NOTE: Theory constants go here
@@ -344,7 +388,7 @@ annotatedFormulas[std::vector<CVC4::Expr>& formulas, CVC4::Expr& expr]
 */
 builtinOp[CVC4::Kind& kind]
 @init {
-  Debug("parser") << "builtin: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser") << "builtin: " << AntlrInput<Smt1LexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : NOT_TOK      { $kind = CVC4::kind::NOT;     }
   | IMPLIES_TOK  { $kind = CVC4::kind::IMPLIES; }
@@ -417,17 +461,17 @@ parameterizedOperator[CVC4::Expr& op]
  */
 bitVectorOperator[CVC4::Expr& op]
   : EXTRACT_TOK '[' n1 = NUMERAL_TOK ':' n2 = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorExtract(AntlrInput::tokenToUnsigned($n1), AntlrInput::tokenToUnsigned($n2))); }
+    { op = MK_CONST(BitVectorExtract(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n1), AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n2))); }
   | REPEAT_TOK '[' n = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorRepeat(AntlrInput::tokenToUnsigned($n))); }
+    { op = MK_CONST(BitVectorRepeat(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n))); }
   | ZERO_EXTEND_TOK '[' n = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorZeroExtend(AntlrInput::tokenToUnsigned($n))); }
+    { op = MK_CONST(BitVectorZeroExtend(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n))); }
   | SIGN_EXTEND_TOK '[' n = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorSignExtend(AntlrInput::tokenToUnsigned($n))); }
+    { op = MK_CONST(BitVectorSignExtend(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n))); }
   | ROTATE_LEFT_TOK '[' n = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorRotateLeft(AntlrInput::tokenToUnsigned($n))); }
+    { op = MK_CONST(BitVectorRotateLeft(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n))); }
   | ROTATE_RIGHT_TOK '[' n = NUMERAL_TOK ']'
-    { op = MK_CONST(BitVectorRotateRight(AntlrInput::tokenToUnsigned($n))); }
+    { op = MK_CONST(BitVectorRotateRight(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($n))); }
   ;
 
 /**
@@ -463,7 +507,7 @@ functionSymbol[CVC4::Expr& fun]
  */
 attribute[std::string& s]
   : ATTR_IDENTIFIER
-    { s = AntlrInput::tokenText($ATTR_IDENTIFIER); }
+    { s = AntlrInput<Smt1LexerTraits>::tokenText($ATTR_IDENTIFIER); }
   ;
 
 functionDeclaration[CVC4::Command*& smt_command]
@@ -538,13 +582,13 @@ sortSymbol returns [CVC4::parser::smt1::myType t]
   : sortName[name,CHECK_NONE]
   	{ $t = PARSER_STATE->getSort(name); }
   | BITVECTOR_TOK '[' NUMERAL_TOK ']' {
-  	$t = EXPR_MANAGER->mkBitVectorType(AntlrInput::tokenToUnsigned($NUMERAL_TOK));
+  	$t = EXPR_MANAGER->mkBitVectorType(AntlrInput<Smt1LexerTraits>::tokenToUnsigned($NUMERAL_TOK));
     }
   /* attaching 'Array' to '[' allows us to parse regular 'Array' correctly in
    * e.g. QF_AX, and also 'Array[m:n]' in e.g. QF_AUFBV */
   | 'Array[' n1=NUMERAL_TOK ':' n2=NUMERAL_TOK ']' {
-        $t = EXPR_MANAGER->mkArrayType(EXPR_MANAGER->mkBitVectorType(AntlrInput::tokenToUnsigned(n1)),
-                                       EXPR_MANAGER->mkBitVectorType(AntlrInput::tokenToUnsigned(n2)));
+        $t = EXPR_MANAGER->mkArrayType(EXPR_MANAGER->mkBitVectorType(AntlrInput<Smt1LexerTraits>::tokenToUnsigned(n1)),
+                                       EXPR_MANAGER->mkBitVectorType(AntlrInput<Smt1LexerTraits>::tokenToUnsigned(n2)));
     }
   ;
 
@@ -621,7 +665,7 @@ identifier[std::string& id,
 		   CVC4::parser::DeclarationCheck check,
            CVC4::parser::SymbolType type]
   : IDENTIFIER
-    { id = AntlrInput::tokenText($IDENTIFIER);
+    { id = AntlrInput<Smt1LexerTraits>::tokenText($IDENTIFIER);
       Debug("parser") << "identifier: " << id
                       << " check? " << check
                       << " type? " << type << std::endl;
@@ -636,7 +680,7 @@ identifier[std::string& id,
 let_identifier[std::string& id,
     		   CVC4::parser::DeclarationCheck check]
   : LET_IDENTIFIER
-    { id = AntlrInput::tokenText($LET_IDENTIFIER);
+    { id = AntlrInput<Smt1LexerTraits>::tokenText($LET_IDENTIFIER);
       Debug("parser") << "let_identifier: " << id
                       << " check? " << check << std::endl;
       PARSER_STATE->checkDeclaration(id, check, SYM_VARIABLE); }
@@ -650,7 +694,7 @@ let_identifier[std::string& id,
 flet_identifier[std::string& id,
     		    CVC4::parser::DeclarationCheck check]
   : FLET_IDENTIFIER
-    { id = AntlrInput::tokenText($FLET_IDENTIFIER);
+    { id = AntlrInput<Smt1LexerTraits>::tokenText($FLET_IDENTIFIER);
       Debug("parser") << "flet_identifier: " << id
                       << " check? " << check << std::endl;
       PARSER_STATE->checkDeclaration(id, check); }
@@ -793,7 +837,7 @@ FLET_IDENTIFIER
  */
 userValue[std::string& s]
   : USER_VALUE
-    { s = AntlrInput::tokenText($USER_VALUE);
+    { s = AntlrInput<Smt1LexerTraits>::tokenText($USER_VALUE);
       assert(*s.begin() == '{');
       assert(*s.rbegin() == '}');
       // trim whitespace
@@ -817,7 +861,7 @@ USER_VALUE
  */
 WHITESPACE
   : (' ' | '\t' | '\f' | '\r' | '\n')+
-    { SKIP(); }
+    { skip(); }
   ;
 
 /**
@@ -844,7 +888,7 @@ STRING_LITERAL
  */
 COMMENT
   : ';' (~('\n' | '\r'))*
-    { SKIP(); }
+    { skip(); }
   ;
 
 
@@ -861,8 +905,6 @@ ALPHA
  * Matches the digits (0-9)
  */
 fragment DIGIT :   '0'..'9';
-// fragment NON_ZERO_DIGIT : '1'..'9';
-// fragment NUMERAL_SEQ : '0' | NON_ZERO_DIGIT DIGIT*;
 
 /**
  * Matches an allowed escaped character.

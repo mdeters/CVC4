@@ -16,12 +16,13 @@
 
 #include "cvc4parser_private.h"
 
+#include "parser/antlr_input.h"
+
 #ifndef __CVC4__PARSER__CVC_INPUT_H
 #define __CVC4__PARSER__CVC_INPUT_H
 
-#include "parser/antlr_input.h"
-#include "parser/cvc/generated/CvcLexer.h"
-#include "parser/cvc/generated/CvcParser.h"
+#include "parser/cvc/generated/CvcLexer.hpp"
+#include "parser/cvc/generated/CvcParser.hpp"
 
 // extern void CvcParserSetAntlrParser(CVC4::parser::AntlrParser* newAntlrParser);
 
@@ -33,12 +34,12 @@ class ExprManager;
 
 namespace parser {
 
-class CvcInput : public AntlrInput {
+class CvcInput : public AntlrInput<CvcLexerTraits> {
   /** The ANTLR3 CVC lexer for the input. */
-  pCvcLexer d_pCvcLexer;
+  CvcLexer* d_pCvcLexer;
 
   /** The ANTLR3 CVC parser for the input. */
-  pCvcParser d_pCvcParser;
+  CvcParser* d_pCvcParser;
 
 public:
 
@@ -46,7 +47,7 @@ public:
    *
    * @param inputStream the input to parse
    */
-  CvcInput(AntlrInputStream& inputStream);
+  CvcInput(AntlrInputStream<CvcLexerTraits>& inputStream);
 
   /** Destructor. Frees the lexer and the parser. */
   virtual ~CvcInput();

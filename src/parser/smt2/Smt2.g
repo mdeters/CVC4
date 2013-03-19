@@ -17,8 +17,8 @@
 grammar Smt2;
 
 options {
-  // C output for antlr
-  language = 'C';
+  // C++ output for antlr
+  language = 'Cpp';
 
   // Skip the default error handling, just break with exceptions
   // defaultErrorHandler = false;
@@ -28,6 +28,49 @@ options {
   // If you change this k, change it also in smt2_input.cpp !
   k = 2;
 }/* options */
+
+@lexer::namespace { CVC4 }
+@parser::namespace { CVC4 }
+
+@lexer::traits {
+  namespace parser { class Smt2Input; }
+
+  class Smt2Lexer;
+  class Smt2Parser;
+
+  template<class ImplTraits>
+  class Smt2Traits : public antlr3::CustomTraitsBase<ImplTraits> {
+  public:
+    typedef CVC4::parser::Smt2Input InputType;
+    class BaseParserType : public antlr3::Parser<ImplTraits> {
+    public:
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, state) {}
+      BaseParserType(ANTLR_UINT32 sizeHint, typename ImplTraits::TokenStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::TokenStreamType>* state) : antlr3::Parser<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Smt2 SuperType;
+      SuperType* super;
+    };
+    class BaseLexerType : public antlr3::Lexer<ImplTraits> {
+    public:
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, state) {}
+      BaseLexerType(ANTLR_UINT32 sizeHint, typename ImplTraits::InputStreamType* input, typename ImplTraits::template RecognizerSharedStateType<typename ImplTraits::InputStreamType>* state) : antlr3::Lexer<ImplTraits>(sizeHint, input, state) {}
+      typedef CVC4::parser::Smt2 SuperType;
+      SuperType* super;
+    };
+    //for using the token stream which deleted the tokens, once it is reduced to a rule
+    //but it leaves the start and stop tokens. So they can be accessed as usual
+    static const bool TOKENS_ACCESSED_FROM_OWNING_RULE = true;
+  };
+
+  typedef antlr3::Traits< Smt2Lexer, Smt2Parser, Smt2Traits > Smt2LexerTraits;
+  typedef Smt2LexerTraits Smt2ParserTraits;
+
+  /* If you don't want the override it is like this.
+     class TLexer;
+     class TParser;
+     typedef antlr3::Traits< TLexer, TParser > TLexerTraits;
+     typedef TLexerTraits TParserTraits;
+  */
+}
 
 @header {
 /**
@@ -57,7 +100,7 @@ options {
 #  define ANTLR3_INLINE_INPUT_8BIT
 #endif /* CVC4_COMPETITION_MODE && !CVC4_SMTCOMP_APPLICATION_TRACK */
 
-#include "parser/antlr_tracing.h"
+#include "parser/smt2/smt2.h"
 
 }/* @lexer::includes */
 
@@ -71,13 +114,14 @@ using namespace CVC4;
 using namespace CVC4::parser;
 
 #undef PARSER_STATE
-#define PARSER_STATE ((Smt2*)LEXER->super)
+#define PARSER_STATE (this->super)
 }/* @lexer::postinclude */
 
 @parser::includes {
+
 #include "expr/command.h"
 #include "parser/parser.h"
-#include "parser/antlr_tracing.h"
+#include "parser/smt2/generated/Smt2Lexer.hpp"
 
 namespace CVC4 {
   class Expr;
@@ -124,7 +168,7 @@ using namespace CVC4::parser;
  * will be defined by ANTLR *after* this section. (If they were functions,
  * PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Smt2*)PARSER->super)
+#define PARSER_STATE (this->super)
 #undef EXPR_MANAGER
 #define EXPR_MANAGER PARSER_STATE->getExprManager()
 #undef MK_EXPR
@@ -235,7 +279,7 @@ command returns [CVC4::Command* cmd = NULL]
       PARSER_STATE->setLogic(name);
       $cmd = new SetBenchmarkLogicCommand(name); }
   | SET_INFO_TOK KEYWORD symbolicExpr[sexpr]
-    { name = AntlrInput::tokenText($KEYWORD);
+    { name = AntlrInput<Smt2LexerTraits>::tokenText($KEYWORD);
       if(name == ":cvc4-logic" || name == ":cvc4_logic") {
         PARSER_STATE->setLogic(sexpr.getValue());
       }
@@ -243,14 +287,14 @@ command returns [CVC4::Command* cmd = NULL]
       cmd = new SetInfoCommand(name.c_str() + 1, sexpr); }
   | /* get-info */
     GET_INFO_TOK KEYWORD
-    { cmd = new GetInfoCommand(AntlrInput::tokenText($KEYWORD).c_str() + 1); }
+    { cmd = new GetInfoCommand(AntlrInput<Smt2LexerTraits>::tokenText($KEYWORD).c_str() + 1); }
   | /* set-option */
     SET_OPTION_TOK keyword[name] symbolicExpr[sexpr]
     { PARSER_STATE->setOption(name.c_str() + 1, sexpr);
       cmd = new SetOptionCommand(name.c_str() + 1, sexpr); }
   | /* get-option */
     GET_OPTION_TOK KEYWORD
-    { cmd = new GetOptionCommand(AntlrInput::tokenText($KEYWORD).c_str() + 1); }
+    { cmd = new GetOptionCommand(AntlrInput<Smt2LexerTraits>::tokenText($KEYWORD).c_str() + 1); }
   | /* sort declaration */
     DECLARE_SORT_TOK { PARSER_STATE->checkThatLogicIsSet(); }
     { if(!PARSER_STATE->isTheoryEnabled(Smt2::THEORY_UF) &&
@@ -265,7 +309,7 @@ command returns [CVC4::Command* cmd = NULL]
     n=INTEGER_LITERAL
     { Debug("parser") << "declare sort: '" << name
                       << "' arity=" << n << std::endl;
-      unsigned arity = AntlrInput::tokenToUnsigned(n);
+      unsigned arity = AntlrInput<Smt2LexerTraits>::tokenToUnsigned(n);
       if(arity == 0) {
         Type type = PARSER_STATE->mkSort(name);
         $cmd = new DeclareTypeCommand(name, 0, type);
@@ -384,7 +428,7 @@ command returns [CVC4::Command* cmd = NULL]
   | /* push */
     PUSH_TOK { PARSER_STATE->checkThatLogicIsSet(); }
     ( k=INTEGER_LITERAL
-      { unsigned n = AntlrInput::tokenToUnsigned(k);
+      { unsigned n = AntlrInput<Smt2LexerTraits>::tokenToUnsigned(k);
         if(n == 0) {
           cmd = new EmptyCommand();
         } else if(n == 1) {
@@ -413,7 +457,7 @@ command returns [CVC4::Command* cmd = NULL]
       } )
   | POP_TOK { PARSER_STATE->checkThatLogicIsSet(); }
     ( k=INTEGER_LITERAL
-      { unsigned n = AntlrInput::tokenToUnsigned(k);
+      { unsigned n = AntlrInput<Smt2LexerTraits>::tokenToUnsigned(k);
         if(n > PARSER_STATE->scopeLevel()) {
           PARSER_STATE->parseError("Attempted to pop above the top stack frame.");
         }
@@ -455,7 +499,7 @@ command returns [CVC4::Command* cmd = NULL]
 
     /* error handling */
   | SIMPLE_SYMBOL
-    { std::string id = AntlrInput::tokenText($SIMPLE_SYMBOL);
+    { std::string id = AntlrInput<Smt2LexerTraits>::tokenText($SIMPLE_SYMBOL);
       if(id == "benchmark") {
         PARSER_STATE->parseError("In SMT-LIBv2 mode, but got something that looks like SMT-LIBv1.  Use --lang smt1 for SMT-LIBv1.");
       } else {
@@ -775,17 +819,17 @@ simpleSymbolicExprNoKeyword[CVC4::SExpr& sexpr]
   std::vector<unsigned int> s_vec;
 }
   : INTEGER_LITERAL
-    { sexpr = SExpr(Integer(AntlrInput::tokenText($INTEGER_LITERAL))); }
+    { sexpr = SExpr(Integer(AntlrInput<Smt2LexerTraits>::tokenText($INTEGER_LITERAL))); }
   | DECIMAL_LITERAL
-    { sexpr = SExpr(AntlrInput::tokenToRational($DECIMAL_LITERAL)); }
+    { sexpr = SExpr(AntlrInput<Smt2LexerTraits>::tokenToRational($DECIMAL_LITERAL)); }
   | HEX_LITERAL
-    { assert( AntlrInput::tokenText($HEX_LITERAL).find("#x") == 0 );
-      std::string hexString = AntlrInput::tokenTextSubstr($HEX_LITERAL, 2);
+    { assert( AntlrInput<Smt2LexerTraits>::tokenText($HEX_LITERAL).find("#x") == 0 );
+      std::string hexString = AntlrInput<Smt2LexerTraits>::tokenTextSubstr($HEX_LITERAL, 2);
       sexpr = Integer(hexString, 16);
     }
   | BINARY_LITERAL
-    { assert( AntlrInput::tokenText($BINARY_LITERAL).find("#b") == 0 );
-      std::string binString = AntlrInput::tokenTextSubstr($BINARY_LITERAL, 2);
+    { assert( AntlrInput<Smt2LexerTraits>::tokenText($BINARY_LITERAL).find("#b") == 0 );
+      std::string binString = AntlrInput<Smt2LexerTraits>::tokenTextSubstr($BINARY_LITERAL, 2);
       sexpr = Integer(binString, 2);
     }
   | str[s,false]
@@ -816,7 +860,7 @@ keyword[std::string& s]
 simpleSymbolicExpr[CVC4::SExpr& sexpr]
   : simpleSymbolicExprNoKeyword[sexpr]
   | KEYWORD
-    { sexpr = SExpr(AntlrInput::tokenText($KEYWORD)); }
+    { sexpr = SExpr(AntlrInput<Smt2LexerTraits>::tokenText($KEYWORD)); }
   ;
 
 symbolicExpr[CVC4::SExpr& sexpr]
@@ -835,7 +879,7 @@ symbolicExpr[CVC4::SExpr& sexpr]
  */
 term[CVC4::Expr& expr, CVC4::Expr& expr2]
 @init {
-  Debug("parser") << "term: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser") << "term: " << AntlrInput<Smt2LexerTraits>::tokenText(LT(1)) << std::endl;
   Kind kind = kind::NULL_EXPR;
   Expr op;
   std::string name;
@@ -1129,29 +1173,29 @@ term[CVC4::Expr& expr, CVC4::Expr& expr2]
     }
     /* constants */
   | INTEGER_LITERAL
-    { expr = MK_CONST( AntlrInput::tokenToInteger($INTEGER_LITERAL) ); }
+    { expr = MK_CONST( AntlrInput<Smt2LexerTraits>::tokenToInteger($INTEGER_LITERAL) ); }
 
   | DECIMAL_LITERAL
     { // FIXME: This doesn't work because an SMT rational is not a
       // valid GMP rational string
-      expr = MK_CONST( AntlrInput::tokenToRational($DECIMAL_LITERAL) ); }
+      expr = MK_CONST( AntlrInput<Smt2LexerTraits>::tokenToRational($DECIMAL_LITERAL) ); }
 
   | LPAREN_TOK INDEX_TOK bvLit=SIMPLE_SYMBOL size=INTEGER_LITERAL RPAREN_TOK
-    { if(AntlrInput::tokenText($bvLit).find("bv") == 0) {
-        expr = MK_CONST( AntlrInput::tokenToBitvector($bvLit, $size) );
+    { if(AntlrInput<Smt2LexerTraits>::tokenText($bvLit).find("bv") == 0) {
+        expr = MK_CONST( AntlrInput<Smt2LexerTraits>::tokenToBitvector($bvLit, $size) );
       } else {
-        PARSER_STATE->parseError("Unexpected symbol `" + AntlrInput::tokenText($bvLit) + "'");
+        PARSER_STATE->parseError("Unexpected symbol `" + AntlrInput<Smt2LexerTraits>::tokenText($bvLit) + "'");
       }
     }
 
   | HEX_LITERAL
-    { assert( AntlrInput::tokenText($HEX_LITERAL).find("#x") == 0 );
-      std::string hexString = AntlrInput::tokenTextSubstr($HEX_LITERAL, 2);
+    { assert( AntlrInput<Smt2LexerTraits>::tokenText($HEX_LITERAL).find("#x") == 0 );
+      std::string hexString = AntlrInput<Smt2LexerTraits>::tokenTextSubstr($HEX_LITERAL, 2);
       expr = MK_CONST( BitVector(hexString, 16) ); }
 
   | BINARY_LITERAL
-    { assert( AntlrInput::tokenText($BINARY_LITERAL).find("#b") == 0 );
-      std::string binString = AntlrInput::tokenTextSubstr($BINARY_LITERAL, 2);
+    { assert( AntlrInput<Smt2LexerTraits>::tokenText($BINARY_LITERAL).find("#b") == 0 );
+      std::string binString = AntlrInput<Smt2LexerTraits>::tokenTextSubstr($BINARY_LITERAL, 2);
       expr = MK_CONST( BitVector(binString, 2) ); }
 
   | str[s,false]
@@ -1182,7 +1226,7 @@ attribute[CVC4::Expr& expr,CVC4::Expr& retExpr, std::string& attr]
 }
   : KEYWORD ( simpleSymbolicExprNoKeyword[sexpr] { hasValue = true; } )?
   {
-    attr = AntlrInput::tokenText($KEYWORD);
+    attr = AntlrInput<Smt2LexerTraits>::tokenText($KEYWORD);
     // EXPR_MANAGER->setNamedAttribute( expr, attr );
     if(attr == ":rewrite-rule") {
       if(hasValue) {
@@ -1273,20 +1317,20 @@ attribute[CVC4::Expr& expr,CVC4::Expr& retExpr, std::string& attr]
 indexedFunctionName[CVC4::Expr& op]
   : LPAREN_TOK INDEX_TOK
     ( 'extract' n1=INTEGER_LITERAL n2=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorExtract(AntlrInput::tokenToUnsigned($n1),
-                                       AntlrInput::tokenToUnsigned($n2))); }
+      { op = MK_CONST(BitVectorExtract(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n1),
+                                       AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n2))); }
     | 'repeat' n=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorRepeat(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(BitVectorRepeat(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | 'zero_extend' n=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorZeroExtend(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(BitVectorZeroExtend(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | 'sign_extend' n=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorSignExtend(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(BitVectorSignExtend(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | 'rotate_left' n=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorRotateLeft(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(BitVectorRotateLeft(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | 'rotate_right' n=INTEGER_LITERAL
-      { op = MK_CONST(BitVectorRotateRight(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(BitVectorRotateRight(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | DIVISIBLE_TOK n=INTEGER_LITERAL
-      { op = MK_CONST(Divisible(AntlrInput::tokenToUnsigned($n))); }
+      { op = MK_CONST(Divisible(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($n))); }
     | INT2BV_TOK n=INTEGER_LITERAL
       { op = MK_CONST(IntToBitVector(AntlrInput::tokenToUnsigned($n)));
         if(PARSER_STATE->strictModeEnabled()) {
@@ -1329,7 +1373,7 @@ termList[std::vector<CVC4::Expr>& formulas, CVC4::Expr& expr]
  */
 str[std::string& s, bool fsmtlib]
   : STRING_LITERAL
-    { s = AntlrInput::tokenText($STRING_LITERAL);
+    { s = AntlrInput<Smt2LexerTraits>::tokenText($STRING_LITERAL);
       /* strip off the quotes */
       s = s.substr(1, s.size() - 2);
 	  for(size_t i=0; i<s.size(); i++) {
@@ -1367,7 +1411,7 @@ str[std::string& s, bool fsmtlib]
  */
 builtinOp[CVC4::Kind& kind]
 @init {
-  Debug("parser") << "builtin: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser") << "builtin: " << AntlrInput<Smt2LexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : NOT_TOK      { $kind = CVC4::kind::NOT;     }
   | IMPLIES_TOK  { $kind = CVC4::kind::IMPLIES; }
@@ -1468,7 +1512,7 @@ builtinOp[CVC4::Kind& kind]
 
 quantOp[CVC4::Kind& kind]
 @init {
-  Debug("parser") << "quant: " << AntlrInput::tokenText(LT(1)) << std::endl;
+  Debug("parser") << "quant: " << AntlrInput<Smt2LexerTraits>::tokenText(LT(1)) << std::endl;
 }
   : EXISTS_TOK    { $kind = CVC4::kind::EXISTS; }
   | FORALL_TOK    { $kind = CVC4::kind::FORALL; }
@@ -1563,7 +1607,9 @@ sortSymbol[CVC4::Type& t, CVC4::parser::DeclarationCheck check]
         }
         t = EXPR_MANAGER->mkArrayType( args[0], args[1] );
       } else if(name == "Set" &&
-                PARSER_STATE->isTheoryEnabled(Smt2::THEORY_SETS) ) {
+                /*PARSER_STATE->isTheoryEnabled(Smt2::THEORY_SETS)*/
+#warning fixme
+ ) {
         if(args.size() != 1) {
           PARSER_STATE->parseError("Illegal set type.");
         }
@@ -1609,7 +1655,7 @@ symbol[std::string& id,
        CVC4::parser::DeclarationCheck check,
        CVC4::parser::SymbolType type]
   : SIMPLE_SYMBOL
-    { id = AntlrInput::tokenText($SIMPLE_SYMBOL);
+    { id = AntlrInput<Smt2LexerTraits>::tokenText($SIMPLE_SYMBOL);
       if(!PARSER_STATE->isAbstractValue(id)) {
         // if an abstract value, SmtEngine handles declaration
         PARSER_STATE->checkDeclaration(id, check, type);
@@ -1620,7 +1666,7 @@ symbol[std::string& id,
       PARSER_STATE->checkDeclaration(id, check, type);
     }
   | QUOTED_SYMBOL
-    { id = AntlrInput::tokenText($QUOTED_SYMBOL);
+    { id = AntlrInput<Smt2LexerTraits>::tokenText($QUOTED_SYMBOL);
       /* strip off the quotes */
       id = id.substr(1, id.size() - 2);
       if(!PARSER_STATE->isAbstractValue(id)) {
@@ -1642,7 +1688,7 @@ symbol[std::string& id,
  */
 nonemptyNumeralList[std::vector<uint64_t>& numerals]
   : ( INTEGER_LITERAL
-      { numerals.push_back(AntlrInput::tokenToUnsigned($INTEGER_LITERAL)); }
+      { numerals.push_back(AntlrInput<Smt2LexerTraits>::tokenToUnsigned($INTEGER_LITERAL)); }
     )+
   ;
 
@@ -1864,7 +1910,9 @@ DTSIZE_TOK : 'dt.size';
 
 FMFCARD_TOK : 'fmf.card';
 
-EMPTYSET_TOK: { PARSER_STATE->isTheoryEnabled(Smt2::THEORY_SETS) }? 'emptyset';
+EMPTYSET_TOK: { /*PARSER_STATE->isTheoryEnabled(Smt2::THEORY_SETS)*/ true
+#warning fixme
+ }? 'emptyset';
 // Other set theory operators are not
 // tokenized and handled directly when
 // processing a term
@@ -1906,7 +1954,7 @@ SIMPLE_SYMBOL
  * Matches and skips whitespace in the input.
  */
 WHITESPACE
-  : (' ' | '\t' | '\f' | '\r' | '\n')+ { SKIP(); }
+  : (' ' | '\t' | '\f' | '\r' | '\n')+ { skip(); }
   ;
 
 /**
@@ -1924,18 +1972,18 @@ INTEGER_LITERAL
  */
 fragment NUMERAL
 @init {
-  char *start = (char*) GETCHARINDEX();
+  char *start = (char*) getCharIndex();
 }
   : DIGIT+
     { Debug("parser-extra") << "NUMERAL: "
-       << (uintptr_t)start << ".." << GETCHARINDEX()
+       << (uintptr_t)start << ".." << getCharIndex()
        << " strict? " << (bool)(PARSER_STATE->strictModeEnabled())
        << " ^0? " << (bool)(*start == '0')
-       << " len>1? " << (bool)(start < (char*)(GETCHARINDEX() - 1))
+       << " len>1? " << (bool)(start < (char*)(getCharIndex() - 1))
        << std::endl; }
     { !PARSER_STATE->strictModeEnabled() ||
       *start != '0' ||
-      start == (char*)(GETCHARINDEX() - 1) }?
+      start == (char*)(getCharIndex() - 1) }?
   ;
 
 /**
@@ -1974,7 +2022,7 @@ STRING_LITERAL
  * Matches the comments and ignores them
  */
 COMMENT
-  : ';' (~('\n' | '\r'))* { SKIP(); }
+  : ';' (~('\n' | '\r'))* { skip(); }
   ;
 
 /**
