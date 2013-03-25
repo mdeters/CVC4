@@ -1,0 +1,11 @@
+% COMMAND-LINE: -m
+% EXPECT: sat
+% EXPECT: ((x, cons(FALSE, nil)))
+% EXPECT: ((x = cons(FALSE, nil), TRUE))
+% EXIT: 10
+DATATYPE List = cons(car:BOOLEAN, cdr:List) | nil END;
+x : List;
+ASSERT x /= nil;
+CHECKSAT;
+GET_VALUE x; % gives "cons(FALSE, nil)"
+GET_VALUE x = cons(FALSE, nil); % gives "FALSE"

@@ -45,6 +45,8 @@ TESTS =	\
 	boolean-terms-tuple.cvc \
 	boolean-terms-record.cvc \
 	boolean-terms-rewrite.cvc \
+	boolean-terms-array-record.cvc \
+	pair-real-bool.smt2 \
 	some-boolean-tests.cvc \
 	v10l40099.cvc \
 	v2l40025.cvc \
@@ -53,10 +55,10 @@ TESTS =	\
 	bug286.cvc \
 	bug438.cvc \
 	bug438b.cvc \
+	bug500.cvc \
 	wrong-sel-simp.cvc
 
 FAILING_TESTS = \
-	pair-real-bool.smt2 \
 	datatype-dump.cvc
 
 EXTRA_DIST = $(TESTS)

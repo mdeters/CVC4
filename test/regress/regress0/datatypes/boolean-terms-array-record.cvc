@@ -1,0 +1,10 @@
+% EXPECT: sat
+% EXIT: 10
+
+x : ARRAY BOOLEAN OF [# i:INT, b:BOOLEAN #];
+
+ASSERT x[FALSE] /= (# i := 0, b := FALSE #);
+ASSERT x[TRUE] /= (# i := 4, b := FALSE #);
+
+CHECKSAT;
+COUNTERMODEL;
