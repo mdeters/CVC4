@@ -19,7 +19,7 @@ AM_CPPFLAGS = \
 	-I@builddir@ -I@srcdir@/include -I@srcdir@ -I@top_srcdir@/proofs/lfsc_checker
 AM_CXXFLAGS = -Wall -Wno-unknown-pragmas -Wno-parentheses $(FLAG_VISIBILITY_HIDDEN)
 
-SUBDIRS = lib options expr util prop/minisat prop/bvminisat . parser compat bindings main
+SUBDIRS = lib options expr util prop/minisat prop/bvminisat tactic . parser compat bindings main
 THEORIES = builtin booleans uf arith bv arrays datatypes sets strings quantifiers idl
 
 lib_LTLIBRARIES = libcvc4.la
