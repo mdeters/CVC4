@@ -28,7 +28,6 @@
 #include "theory/uf/symmetry_breaker.h"
 
 #include "context/cdo.h"
-#include "context/cdhashset.h"
 
 namespace CVC4 {
 namespace theory {

@@ -36,6 +36,7 @@ TheoryUF::TheoryUF(context::Context* c, context::UserContext* u, OutputChannel& 
   d_thss(options::finiteModelFind() ? new StrongSolverTheoryUF(c, u, out, this) : NULL),
   d_equalityEngine(d_notify, c, "theory::uf::TheoryUF"),
   d_conflict(c, false),
+  d_conflictNode(),
   d_literalsToPropagate(c),
   d_literalsToPropagateIndex(c, 0),
   d_functionsTerms(c),
@@ -100,7 +101,6 @@ void TheoryUF::check(Effort level) {
       d_equalityEngine.assertPredicate(atom, polarity, fact);
     }
   }
-
 
   if (d_thss != NULL && ! d_conflict) {
     d_thss->check(level);

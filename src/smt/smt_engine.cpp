@@ -37,11 +37,13 @@
 #include "expr/node_builder.h"
 #include "expr/node.h"
 #include "expr/node_self_iterator.h"
+#include "expr/attribute.h"
 #include "prop/prop_engine.h"
 #include "smt/modal_exception.h"
 #include "smt/smt_engine.h"
 #include "smt/smt_engine_scope.h"
 #include "smt/model_postprocessor.h"
+#include "smt/interpreted_attr.h"
 #include "theory/theory_engine.h"
 #include "theory/bv/theory_bv_rewriter.h"
 #include "proof/proof_manager.h"
@@ -105,7 +107,7 @@ public:
     d_formula(formula) {
   }
   Node getFunction() const { return d_func; }
-  vector<Node> getFormals() const { return d_formals; }
+  const vector<Node>& getFormals() const { return d_formals; }
   Node getFormula() const { return d_formula; }
 };/* class DefinedFunction */
 
@@ -516,7 +518,7 @@ public:
   /**
    * Expand definitions in n.
    */
-  Node expandDefinitions(TNode n, hash_map<Node, Node, NodeHashFunction>& cache)
+  Node expandDefinitions(TNode n, hash_map<Node, Node, NodeHashFunction>& cache, bool fullyExpand = false)
     throw(TypeCheckingException, LogicException);
 
   /**
@@ -527,7 +529,7 @@ public:
     // Substitute out any abstract values in ex.
     // Expand definitions.
     hash_map<Node, Node, NodeHashFunction> cache;
-    Node n = expandDefinitions(in, cache).toExpr();
+    Node n = expandDefinitions(in, cache, true).toExpr();
     // Make sure we've done all preprocessing, etc.
     Assert(d_assertionsToCheck.size() == 0 && d_assertionsToPreprocess.size() == 0);
     return applySubstitutions(n).toExpr();
@@ -772,7 +774,6 @@ SmtEngine::~SmtEngine() throw() {
 
     d_definedFunctions->deleteSelf();
 
-
     delete d_theoryEngine;
     delete d_propEngine;
     delete d_decisionEngine;
@@ -886,6 +887,11 @@ void SmtEngine::setLogicInternal() throw() {
       Trace("smt") << "turning on model-based array solver" << endl;
       options::arraysModelBased.set(true);
     }
+  }
+  // Don't allow both bitblast-eager and lazy-defs
+  if(options::lazyDefinitions() && options::bitvectorEagerBitblast()) {
+    Warning() << "SmtEngine: turning off lazy-definitions because eager bitblasting is on" << endl;
+    setOption("lazy-definitions", false);
   }
   // Turn on multiple-pass non-clausal simplification for QF_AUFBV
   if(! options::repeatSimp.wasSetByUser()) {
@@ -1273,6 +1279,16 @@ void SmtEngine::defineFunction(Expr func,
   // d_haveAdditions = true;
   Debug("smt") << "definedFunctions insert " << funcNode << " " << formNode << endl;
   d_definedFunctions->insert(funcNode, def);
+  if(formalsNodes.empty()) {
+    hash_map<Node, Node, NodeHashFunction> cache;
+    funcNode.setAttribute(smt::InterpretedAttr(), formNode);
+    funcNode.setAttribute(smt::FullyInterpretedAttr(), Rewriter::rewrite(d_private->expandDefinitions(formNode, cache, true)));
+  } else {
+    Node lam = NodeManager::currentNM()->mkNode(kind::LAMBDA, NodeManager::currentNM()->mkNode(kind::BOUND_VAR_LIST, formalsNodes), formNode);
+    funcNode.setAttribute(smt::InterpretedAttr(), lam);
+    hash_map<Node, Node, NodeHashFunction> cache;
+    funcNode.setAttribute(smt::FullyInterpretedAttr(), Rewriter::rewrite(d_private->expandDefinitions(lam, cache, true)));
+  }
 }
 
 
@@ -1327,7 +1343,7 @@ Node SmtEnginePrivate::expandBVDivByZero(TNode n) {
 }
 
 
-Node SmtEnginePrivate::expandDefinitions(TNode n, hash_map<Node, Node, NodeHashFunction>& cache)
+Node SmtEnginePrivate::expandDefinitions(TNode n, hash_map<Node, Node, NodeHashFunction>& cache, bool fullyExpand)
   throw(TypeCheckingException, LogicException) {
 
   Kind k = n.getKind();
@@ -1441,36 +1457,51 @@ Node SmtEnginePrivate::expandDefinitions(TNode n, hash_map<Node, Node, NodeHashF
     SmtEngine::DefinedFunctionMap::const_iterator i =
       d_smt.d_definedFunctions->find(func);
     DefinedFunction def = (*i).second;
-    vector<Node> formals = def.getFormals();
-
-    if(Debug.isOn("expand")) {
-      Debug("expand") << "found: " << n << endl;
-      Debug("expand") << " func: " << func << endl;
-      string name = func.getAttribute(expr::VarNameAttr());
-      Debug("expand") << "     : \"" << name << "\"" << endl;
-    }
-    if(i == d_smt.d_definedFunctions->end()) {
-      throw TypeCheckingException(n.toExpr(), string("Undefined function: `") + func.toString() + "'");
-    }
-    if(Debug.isOn("expand")) {
-      Debug("expand") << " defn: " << def.getFunction() << endl
-                      << "       [";
-      if(formals.size() > 0) {
-        copy( formals.begin(), formals.end() - 1,
-              ostream_iterator<Node>(Debug("expand"), ", ") );
-        Debug("expand") << formals.back();
+    Node instance;
+    if(options::lazyDefinitions() &&
+       !fullyExpand) {
+      Debug("expand") << "replacing " << n << endl;
+      if(def.getFormals().empty()) {
+        instance = def.getFormula();
+      } else {
+        NodeBuilder<> b(kind::APPLY_UF);
+        b << def.getFunction();
+        b.append(n.begin(), n.end());
+        instance = b;
       }
-      Debug("expand") << "]" << endl
-                      << "       " << def.getFunction().getType() << endl
-                      << "       " << def.getFormula() << endl;
+      Debug("expand") << "     with " << instance << endl;
+    } else {
+      vector<Node> formals = def.getFormals();
+
+      if(Debug.isOn("expand")) {
+        Debug("expand") << "found: " << n << endl;
+        Debug("expand") << " func: " << func << endl;
+        string name = func.getAttribute(expr::VarNameAttr());
+        Debug("expand") << "     : \"" << name << "\"" << endl;
+      }
+      if(i == d_smt.d_definedFunctions->end()) {
+        throw TypeCheckingException(n.toExpr(), string("Undefined function: `") + func.toString() + "'");
+      }
+      if(Debug.isOn("expand")) {
+        Debug("expand") << " defn: " << def.getFunction() << endl
+                        << "       [";
+        if(formals.size() > 0) {
+          copy( formals.begin(), formals.end() - 1,
+                ostream_iterator<Node>(Debug("expand"), ", ") );
+          Debug("expand") << formals.back();
+        }
+        Debug("expand") << "]" << endl
+                        << "       " << def.getFunction().getType() << endl
+                        << "       " << def.getFormula() << endl;
+      }
+
+      TNode fm = def.getFormula();
+      instance = fm.substitute(formals.begin(), formals.end(),
+                               n.begin(), n.end());
+      Debug("expand") << "made : " << instance << endl;
     }
 
-    TNode fm = def.getFormula();
-    Node instance = fm.substitute(formals.begin(), formals.end(),
-                                  n.begin(), n.end());
-    Debug("expand") << "made : " << instance << endl;
-
-    Node expanded = expandDefinitions(instance, cache);
+    Node expanded = expandDefinitions(instance, cache, fullyExpand);
     cache[n] = (n == expanded ? Node::null() : expanded);
     return expanded;
   }
@@ -1495,7 +1526,7 @@ Node SmtEnginePrivate::expandDefinitions(TNode n, hash_map<Node, Node, NodeHashF
         iend = node.end();
       i != iend;
       ++i) {
-    Node expanded = expandDefinitions(*i, cache);
+    Node expanded = expandDefinitions(*i, cache, fullyExpand);
     Debug("expand") << "exchld: " << expanded << endl;
     nb << expanded;
   }
@@ -3256,7 +3287,7 @@ Expr SmtEngine::getValue(const Expr& ex) const throw(ModalException, TypeCheckin
 
   // Expand, then normalize
   hash_map<Node, Node, NodeHashFunction> cache;
-  Node n = d_private->expandDefinitions(Node::fromExpr(e), cache);
+  Node n = d_private->expandDefinitions(Node::fromExpr(e), cache, true);
   n = Rewriter::rewrite(n);
 
   Trace("smt") << "--- getting value of " << n << endl;
@@ -3352,7 +3383,7 @@ CVC4::SExpr SmtEngine::getAssignment() throw(ModalException) {
 
     // Expand, then normalize
     hash_map<Node, Node, NodeHashFunction> cache;
-    Node n = d_private->expandDefinitions(*i, cache);
+    Node n = d_private->expandDefinitions(*i, cache, true);
     n = Rewriter::rewrite(n);
 
     Trace("smt") << "--- getting value of " << n << endl;
@@ -3531,7 +3562,7 @@ void SmtEngine::checkModel(bool hardFailure) {
     // Apply any define-funs from the problem.
     {
       hash_map<Node, Node, NodeHashFunction> cache;
-      n = d_private->expandDefinitions(n, cache);
+      n = d_private->expandDefinitions(n, cache, true);
     }
     Notice() << "SmtEngine::checkModel(): -- expands to " << n << endl;
 

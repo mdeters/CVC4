@@ -43,7 +43,7 @@ public:
   TheoryModel(context::Context* c, std::string name, bool enableFuncModels);
   virtual ~TheoryModel(){}
   /** equality engine containing all known equalities/disequalities */
-  eq::EqualityEngine d_equalityEngine;
+  eq::EqualityEngine* d_equalityEngine;
   /** map of representatives of equality engine to used representatives in representative set */
   std::map< Node, Node > d_reps;
   /** stores set of representatives for each type */
@@ -52,6 +52,7 @@ public:
   Node d_true;
   Node d_false;
   context::CDO<bool> d_modelBuilt;
+  context::Context* d_context;
 
 protected:
   /** reset the model */

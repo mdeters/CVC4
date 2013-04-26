@@ -19,7 +19,8 @@ libsmt_la_SOURCES = \
 	boolean_terms.cpp \
 	logic_exception.h \
 	simplification_mode.h \
-	simplification_mode.cpp
+	simplification_mode.cpp \
+	interpreted_attr.h
 
 nodist_libsmt_la_SOURCES = \
 	smt_options.cpp

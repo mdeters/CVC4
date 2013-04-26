@@ -31,6 +31,7 @@
 #include "theory/theory_traits.h"
 
 #include "smt/logic_exception.h"
+#include "smt/interpreted_attr.h"
 
 #include "util/node_visitor.h"
 #include "util/ite_removal.h"
@@ -95,6 +96,7 @@ TheoryEngine::TheoryEngine(context::Context* context,
   d_userContext(userContext),
   d_logicInfo(logicInfo),
   d_sharedTerms(this, context),
+  d_interpreted(context),
   d_masterEqualityEngine(NULL),
   d_masterEENotify(*this),
   d_quantEngine(NULL),
@@ -371,7 +373,44 @@ void TheoryEngine::check(Theory::Effort effort) {
 
     // Must consult quantifiers theory for last call to ensure sat, or otherwise add a lemma
     if( effort == Theory::EFFORT_FULL && ! d_inConflict && ! needCheck() ) {
-      if(d_logicInfo.isQuantified()) {
+      if(options::lazyDefinitions() && !d_interpreted.empty()) {
+        bool lazyDefLemmas = false;
+        // must build model at this point
+        d_curr_model_builder->buildModel(d_curr_model, true);
+        for(context::CDHashMap<TNode, bool, TNodeHashFunction>::iterator i = d_interpreted.begin(); i != d_interpreted.end(); ++i) {
+          Debug("interpreted") << "..." << (*i).first.getOperator() << " has " << (*i).first.getOperator().getAttribute(smt::FullyInterpretedAttr()) << std::endl;
+          NodeBuilder<> b(kind::APPLY_UF);
+          b << d_curr_model->getValue((*i).first.getOperator().getAttribute(smt::FullyInterpretedAttr()));
+          Debug("interpreted") << b.getOperator() << std::endl;
+          for(Node::const_iterator j = (*i).first.begin(); j != (*i).first.end(); ++j) {
+            Debug("interpreted") << *j << std::endl << "  " << d_curr_model->getValue(*j) << std::endl;
+            b << d_curr_model->getValue(*j);
+          }
+          Node apply = b;
+          Node defModVal = Rewriter::rewrite(apply);
+          Debug("interpreted") << "..." << (*i).first << " is " << defModVal << std::endl;
+
+          b.clear(kind::APPLY_UF);
+          b << (*i).first.getOperator().getAttribute(smt::FullyInterpretedAttr());
+          b.append((*i).first.begin(), (*i).first.end());
+          apply = b;
+          Node defVal = Rewriter::rewrite(apply);
+
+          Node modVal = d_curr_model->getValue((*i).first);
+          Debug("interpreted") << "...in model: " << modVal << std::endl;
+          if(modVal == defModVal) {
+            Debug("interpreted") << "...all ok!" << std::endl;
+          } else {
+            Node def = NodeManager::currentNM()->mkNode(defVal.getType().isBoolean() ? kind::IFF : kind::EQUAL, (*i).first, defVal);
+            Debug("interpreted") << "...uh oh!  def : " << def << std::endl;
+            lemma(def, false, false, THEORY_LAST);
+            lazyDefLemmas = true;
+          }
+        }
+        if(lazyDefLemmas) {
+          return;
+        }
+      } else if(d_logicInfo.isQuantified()) {
         // quantifiers engine must pass effort last call check
         d_quantEngine->check(Theory::EFFORT_LAST_CALL);
         // if we have given up, then possibly flip decision
@@ -888,6 +927,20 @@ bool TheoryEngine::markPropagation(TNode assertion, TNode originalAssertion, the
   return true;
 }
 
+void TheoryEngine::findInterpreted(TNode atom) {
+#warning cache me
+  if(atom.getMetaKind() == kind::metakind::PARAMETERIZED) {
+    if(atom.getOperator().hasAttribute(smt::InterpretedAttr())) {
+if(d_interpreted.find(atom) != d_interpreted.end()) {
+Debug("interpreted") << "FOUND INTERPRETED: " << atom << std::endl;
+}
+      d_interpreted.insert(atom, true);
+    }
+  }
+  for(TNode::iterator i = atom.begin(); i != atom.end(); ++i) {
+    findInterpreted(*i);
+  }
+}
 
 void TheoryEngine::assertToTheory(TNode assertion, TNode originalAssertion, theory::TheoryId toTheoryId, theory::TheoryId fromTheoryId) {
 
@@ -907,6 +960,11 @@ void TheoryEngine::assertToTheory(TNode assertion, TNode originalAssertion, theo
 
   if (d_inConflict) {
     return;
+  }
+
+  // Find interpreted symbols in assertion
+  if(options::lazyDefinitions()) {
+    findInterpreted(assertion);
   }
 
   // If sharing is disabled, things are easy

@@ -27,6 +27,7 @@
 #include "expr/command.h"
 #include "prop/prop_engine.h"
 #include "context/cdhashset.h"
+#include "context/cdhashmap.h"
 #include "theory/theory.h"
 #include "theory/substitutions.h"
 #include "theory/rewriter.h"
@@ -135,6 +136,11 @@ class TheoryEngine {
   SharedTermsDatabase d_sharedTerms;
 
   /**
+   * A set of interpreted symbols with asseritons about them.
+   */
+  context::CDHashMap<TNode, bool, TNodeHashFunction> d_interpreted;
+
+  /**
    * Master equality engine, to share with theories.
    */
   theory::eq::EqualityEngine* d_masterEqualityEngine;
@@ -172,6 +178,7 @@ class TheoryEngine {
    * Default model object
    */
   theory::TheoryModel* d_curr_model;
+
   /**
    * Model builder object
    */
@@ -429,6 +436,11 @@ class TheoryEngine {
    * possible."
    */
   void propagateAsDecision(TNode literal, theory::TheoryId theory);
+
+  /**
+   * Find interpreted symbols in n and add them to d_interpreted.
+   */
+  void findInterpreted(TNode n);
 
   /**
    * A variable to mark if we added any lemmas.
