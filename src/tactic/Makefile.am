@@ -7,5 +7,4 @@ noinst_LTLIBRARIES = libtactic.la
 
 libtactic_la_SOURCES = \
 	tactic.h \
-	identity.h \
-	identity.cpp
+	identity.h

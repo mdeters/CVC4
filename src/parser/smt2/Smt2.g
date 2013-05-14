@@ -454,7 +454,11 @@ extendedCommand[CVC4::Command*& cmd]
 }
     /* Extended SMT-LIB set of commands syntax, not permitted in
      * --smtlib2 compliance mode. */
-  : DECLARE_DATATYPES_TOK { PARSER_STATE->checkThatLogicIsSet(); }
+  : APPLY_TOK { PARSER_STATE->checkThatLogicIsSet(); }
+    tactic
+  | CHECKSAT_USING_TOK { PARSER_STATE->checkThatLogicIsSet(); }
+    tactic
+  | DECLARE_DATATYPES_TOK { PARSER_STATE->checkThatLogicIsSet(); }
     { /* open a scope to keep the UnresolvedTypes contained */
       PARSER_STATE->pushScope(true); }
     LPAREN_TOK /* parametric sorts */
@@ -578,6 +582,31 @@ extendedCommand[CVC4::Command*& cmd]
   | SIMPLIFY_TOK { PARSER_STATE->checkThatLogicIsSet(); }
     term[e,e2]
     { cmd = new SimplifyCommand(e); }
+  ;
+
+tactic
+@init {
+  std::string name, s;
+  SExpr sexpr;
+  Kind k;
+}
+  : symbol[name,CHECK_NONE,SYM_SORT]
+  | SIMPLIFY_TOK { name = "simplify"; }
+  | 'repeat' { name = "repeat"; }
+  | LPAREN_TOK
+    ( symbol[name,CHECK_NONE,SYM_SORT]
+    | SIMPLIFY_TOK { name = "simplify"; }
+    | 'repeat' { name = "repeat"; }
+    | ATTRIBUTE_TOK { name = "using-params"; }
+    )
+    ( tactic
+    | INTEGER_LITERAL
+    | DECIMAL_LITERAL
+    | str[s]
+    | builtinOp[k]
+    | KEYWORD
+    )+
+    RPAREN_TOK
   ;
 
 rewriterulesCommand[CVC4::Command*& cmd]
@@ -1582,6 +1611,8 @@ POP_TOK : 'pop';
 AS_TOK : 'as';
 
 // extended commands
+APPLY_TOK : 'apply';
+CHECKSAT_USING_TOK : 'check-sat-using';
 DECLARE_DATATYPES_TOK : 'declare-datatypes';
 GET_MODEL_TOK : 'get-model';
 ECHO_TOK : 'echo';
