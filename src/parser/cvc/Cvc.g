@@ -78,6 +78,7 @@ tokens {
   COUNTEREXAMPLE_TOK = 'COUNTEREXAMPLE';
   COUNTERMODEL_TOK = 'COUNTERMODEL';
   ARITH_VAR_ORDER_TOK = 'ARITH_VAR_ORDER';
+  TACTIC_TOK = 'TACTIC';
 
   /* operators */
 
@@ -639,7 +640,9 @@ mainCommand[CVC4::Command*& cmd]
   : ASSERT_TOK formula[f] { cmd = new AssertCommand(f); }
 
   | QUERY_TOK formula[f] { cmd = new QueryCommand(f); }
-  | CHECKSAT_TOK formula[f]? { cmd = f.isNull() ? new CheckSatCommand() : new CheckSatCommand(f); }
+  | CHECKSAT_TOK formula[f]?
+    (WITH_TOK TACTIC_TOK tactic)?
+    { cmd = f.isNull() ? new CheckSatCommand() : new CheckSatCommand(f); }
 
     /* options */
   | OPTION_TOK
@@ -674,6 +677,9 @@ mainCommand[CVC4::Command*& cmd]
 
   | RESET_TOK
     { UNSUPPORTED("RESET command"); }
+
+    /* tactics */
+  | TACTIC_TOK tactic
 
     // Datatypes can be mututally-recursive if they're in the same
     // definition block, separated by a comma.  So we parse everything
@@ -812,6 +818,38 @@ simpleSymbolicExpr[CVC4::SExpr& sexpr]
     { sexpr = SExpr(s); }
   | IDENTIFIER
     { sexpr = SExpr(AntlrInput::tokenText($IDENTIFIER)); }
+  ;
+
+tactic
+@init {
+  std::string name, s;
+  SExpr sexpr;
+  Kind k;
+}
+  : IDENTIFIER
+    (LPAREN (IDENTIFIER ASSIGN_TOK)?
+            ( tactic
+            | INTEGER_LITERAL
+            | MINUS_TOK INTEGER_LITERAL
+            | DECIMAL_LITERAL
+            | HEX_LITERAL
+            | BINARY_LITERAL
+            | str[s]
+            | KEYWORD
+            )
+            ( COMMA (IDENTIFIER ASSIGN_TOK)?
+                    ( tactic
+                    | INTEGER_LITERAL
+                    | MINUS_TOK INTEGER_LITERAL
+                    | DECIMAL_LITERAL
+                    | HEX_LITERAL
+                    | BINARY_LITERAL
+                    | str[s]
+                    | KEYWORD
+                    )
+            )*
+    RPAREN)?
+    ((THEN_TOK | OR_TOK) tactic)?
   ;
 
 symbolicExpr[CVC4::SExpr& sexpr]
