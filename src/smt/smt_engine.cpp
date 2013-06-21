@@ -837,6 +837,16 @@ void SmtEngine::setLogicInternal() throw() {
     Theory::setTheoryOfMode(options::theoryOfMode());
   }
 
+  // if we're in IDL, turn on DL solver in place of Simplex
+  if(d_logic.isTheoryEnabled(THEORY_ARITH) &&
+     d_logic.isDifferenceLogic() &&
+     !d_logic.areRealsUsed()) {
+    Trace("smt") << "turning on DL solver" << endl;
+    std::map<std::string, bool> m = options::theoryAlternates();
+    m["idl"] = true;
+    options::theoryAlternates.set(m);
+  }
+
   // by default, symmetry breaker is on only for QF_UF
   if(! options::ufSymmetryBreaker.wasSetByUser()) {
     bool qf_uf = d_logic.isPure(THEORY_UF) && !d_logic.isQuantified();
