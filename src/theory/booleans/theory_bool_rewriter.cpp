@@ -304,17 +304,19 @@ RewriteResponse TheoryBoolRewriter::preRewrite(TNode n) {
         Debug("bool-ite") << "n[1] ==ff && n[2] == tt " << n << ": " << n[0].notNode() << std::endl;
         return RewriteResponse(REWRITE_AGAIN, makeNegation(n[0]));
       }
-      // else if(n[1] == ff){
-      //   Node resp = (n[0].notNode()).andNode(n[2]);
-      //   return RewriteResponse(REWRITE_AGAIN, resp);
-      // }
+      else if (n[1] == tt) {
+        return RewriteResponse(REWRITE_AGAIN_FULL, n[0].orNode(n[2]));
+      }
+      else if (n[1] == ff) {
+        return RewriteResponse(REWRITE_AGAIN_FULL, n[0].notNode().andNode(n[2]));
+      }
     }
-    // else if (n[2].isConst()) {
-    //   if(n[2] == ff){
-    //     Node resp = (n[0]).andNode(n[1]);
-    //     return RewriteResponse(REWRITE_AGAIN, resp);
-    //   }
-    // }
+    else if (n[2] == tt) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, n[0].notNode().orNode(n[1]));
+    }
+    else if (n[2] == ff) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, n[0].andNode(n[1]));
+    }
 
     int parityTmp;
     if ((parityTmp = equalityParity(n[1], n[2])) != 0) {
