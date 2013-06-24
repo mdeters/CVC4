@@ -52,7 +52,8 @@ CnfStream::CnfStream(SatSolver *satSolver, Registrar* registrar, context::Contex
   d_literalToNodeMap(context),
   d_fullLitToNodeMap(fullLitToNodeMap),
   d_registrar(registrar),
-  d_removable(false) {
+  d_removable(false),
+  d_marker() {
 }
 
 TseitinCnfStream::TseitinCnfStream(SatSolver* satSolver, Registrar* registrar, context::Context* context, bool fullLitToNodeMap) :
@@ -73,6 +74,10 @@ void CnfStream::assertClause(TNode node, SatClause& c) {
       Node n = b;
       Dump("clauses") << AssertCommand(Expr(n.toExpr()));
     }
+  }
+  if(!d_marker.isNull()) {
+    Debug("cnf") << "++ marking with literal " << d_marker << endl;
+    c.push_back(d_marker);
   }
   d_satSolver->addClause(c, d_removable);
 }
@@ -648,14 +653,15 @@ void TseitinCnfStream::convertAndAssertIte(TNode node, bool negated) {
 // At the top level we must ensure that all clauses that are asserted are
 // not unit, except for the direct assertions. This allows us to remove the
 // clauses later when they are not needed anymore (lemmas for example).
-void TseitinCnfStream::convertAndAssert(TNode node, bool removable, bool negated) {
-  Debug("cnf") << "convertAndAssert(" << node << ", removable = " << (removable ? "true" : "false") << ", negated = " << (negated ? "true" : "false") << ")" << endl;
+void TseitinCnfStream::convertAndAssert(TNode node, bool removable, bool negated, SatLiteral marker) {
+  Debug("cnf") << "convertAndAssert(" << node << ", removable = " << (removable ? "true" : "false") << ", negated = " << (negated ? "true" : "false") << ", marker = " << marker << ")" << endl;
   d_removable = removable;
+  d_marker = marker;
   convertAndAssert(node, negated);
 }
 
 void TseitinCnfStream::convertAndAssert(TNode node, bool negated) {
-  Debug("cnf") << "convertAndAssert(" << node << ", negated = " << (negated ? "true" : "false") << ")" << endl;
+  Debug("cnf") << "convertAndAssert(" << node << ", negated = " << (negated ? "true" : "false") << ") d_marker == " << d_marker << endl;
 
   switch(node.getKind()) {
   case AND:

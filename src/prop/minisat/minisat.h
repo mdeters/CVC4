@@ -21,6 +21,8 @@
 #include "prop/sat_solver.h"
 #include "prop/sat_solver_registry.h"
 #include "prop/minisat/simp/SimpSolver.h"
+#include "context/context.h"
+#include "context/cdlist.h"
 
 namespace CVC4 {
 namespace prop {
@@ -35,6 +37,9 @@ class MinisatSatSolver : public DPLLSatSolverInterface {
 
   /** Context we will be using to synchronize the sat solver */
   context::Context* d_context;
+
+  /** Context-dependent list of current assumptions to make */
+  context::CDList<SatLiteral>* d_assumps;
 
 public:
 
@@ -52,13 +57,15 @@ public:
   static void  toMinisatClause(SatClause& clause, Minisat::vec<Minisat::Lit>& minisat_clause);
   static void  toSatClause    (Minisat::vec<Minisat::Lit>& clause, SatClause& sat_clause);
   static void  toSatClause    (const Minisat::Clause& clause, SatClause& sat_clause);
-  void initialize(context::Context* context, TheoryProxy* theoryProxy);
+  void initialize(context::UserContext* userContext, context::Context* context, TheoryProxy* theoryProxy);
 
   void addClause(SatClause& clause, bool removable);
 
   SatVariable newVar(bool isTheoryAtom, bool preRegister, bool canErase);
   SatVariable trueVar() { return d_minisat->trueVar(); }
   SatVariable falseVar() { return d_minisat->falseVar(); }
+
+  void assume(SatLiteral lit);
 
   SatValue solve();
   SatValue solve(long unsigned int&);
@@ -77,6 +84,7 @@ public:
 
   void push();
 
+  void popTrail();
   void pop();
 
   void requirePhase(SatLiteral lit);

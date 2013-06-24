@@ -36,6 +36,7 @@ namespace prop {
 
 class CnfStream;
 class DPLLSatSolverInterface;
+class SatLiteral;
 
 class PropEngine;
 
@@ -141,6 +142,9 @@ class PropEngine {
   /** The CNF converter in use */
   CnfStream* d_cnfStream;
 
+  /** Our push/pop markers (if using marker-incremental mode) */
+  std::vector<SatLiteral> d_markers;
+
   /** A timer for SAT calls */
   SatTimer d_satTimer;
 
@@ -155,7 +159,7 @@ public:
   /**
    * Create a PropEngine with a particular decision and theory engine.
    */
-  PropEngine(TheoryEngine*, DecisionEngine*, context::Context* satContext, context::Context* userContext);
+  PropEngine(TheoryEngine*, DecisionEngine*, context::Context* satContext, context::UserContext* userContext);
 
   /**
    * Destructor.

@@ -120,11 +120,14 @@ public:
 
 class DPLLSatSolverInterface: public SatSolver {
 public:
-  virtual void initialize(context::Context* context, prop::TheoryProxy* theoryProxy) = 0;
+  virtual void initialize(context::UserContext* userContext, context::Context* context, prop::TheoryProxy* theoryProxy) = 0;
 
   virtual void push() = 0;
 
+  virtual void popTrail() = 0;
   virtual void pop() = 0;
+
+  virtual void assume(SatLiteral lit) = 0;
 
   virtual bool properExplanation(SatLiteral lit, SatLiteral expl) const = 0;
 

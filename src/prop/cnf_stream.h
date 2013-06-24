@@ -36,9 +36,6 @@
 namespace CVC4 {
 namespace prop {
 
-
-class PropEngine;
-
 /**
  * Comments for the behavior of the whole class... [??? -Chris]
  * @author Tim King <taking@cs.nyu.edu>
@@ -110,6 +107,11 @@ protected:
    * removable.
    */
   bool d_removable;
+
+  /**
+   * Are we asserting a marked clause?
+   */
+  SatLiteral d_marker;
 
   /**
    * Asserts the given clause to the sat solver.
@@ -190,7 +192,7 @@ public:
    * @param removable whether the sat solver can choose to remove the clauses
    * @param negated whether we are asserting the node negated
    */
-  virtual void convertAndAssert(TNode node, bool removable, bool negated) = 0;
+  virtual void convertAndAssert(TNode node, bool removable, bool negated, SatLiteral marker = SatLiteral()) = 0;
 
   /**
    * Get the node that is represented by the given SatLiteral.
@@ -258,7 +260,7 @@ public:
    * @param removable is this something that can be erased
    * @param negated true if negated
    */
-  void convertAndAssert(TNode node, bool removable, bool negated);
+  void convertAndAssert(TNode node, bool removable, bool negated, SatLiteral marker = SatLiteral());
 
   /**
    * Constructs the stream to use the given sat solver.

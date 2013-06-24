@@ -27,6 +27,7 @@
 #include "theory/theory_registrar.h"
 #include "util/cvc4_assert.h"
 #include "options/options.h"
+#include "prop/options.h"
 #include "smt/options.h"
 #include "main/options.h"
 #include "util/output.h"
@@ -64,7 +65,7 @@ public:
   }
 };
 
-PropEngine::PropEngine(TheoryEngine* te, DecisionEngine *de, Context* satContext, Context* userContext) :
+PropEngine::PropEngine(TheoryEngine* te, DecisionEngine *de, Context* satContext, UserContext* userContext) :
   d_inCheckSat(false),
   d_theoryEngine(te),
   d_decisionEngine(de),
@@ -87,7 +88,7 @@ PropEngine::PropEngine(TheoryEngine* te, DecisionEngine *de, Context* satContext
      options::decisionMode() == decision::DECISION_STRATEGY_RELEVANCY
      );
 
-  d_satSolver->initialize(d_context, new TheoryProxy(this, d_theoryEngine, d_decisionEngine, d_context, d_cnfStream));
+  d_satSolver->initialize(userContext, d_context, new TheoryProxy(this, d_theoryEngine, d_decisionEngine, d_context, d_cnfStream));
 
   d_decisionEngine->setSatSolver(d_satSolver);
   d_decisionEngine->setCnfStream(d_cnfStream);
@@ -104,7 +105,13 @@ void PropEngine::assertFormula(TNode node) {
   Assert(!d_inCheckSat, "Sat solver in solve()!");
   Debug("prop") << "assertFormula(" << node << ")" << endl;
   // Assert as non-removable
-  d_cnfStream->convertAndAssert(node, false, false);
+  if(d_markers.size() > 0) {
+    Debug("markers") << "asserting " << node << endl
+                     << "  with marker " << d_markers.back() << endl;
+    d_cnfStream->convertAndAssert(node, false, false, d_markers.back());
+  } else {
+    d_cnfStream->convertAndAssert(node, false, false);
+  }
 }
 
 void PropEngine::assertLemma(TNode node, bool negated, bool removable) {
@@ -252,13 +259,31 @@ void PropEngine::ensureLiteral(TNode n) {
 
 void PropEngine::push() {
   Assert(!d_inCheckSat, "Sat solver in solve()!");
-  d_satSolver->push();
+  if(options::markerIncremental()) {
+    SatLiteral newLit = d_satSolver->newVar(false, false, false);
+    Debug("markers") << "push() -> marking with " << newLit << ", assuming " << ~newLit << endl;
+    d_markers.push_back(newLit);
+    d_satSolver->assume(~newLit);
+  } else {
+    d_satSolver->push();
+  }
   Debug("prop") << "push()" << endl;
 }
 
 void PropEngine::pop() {
   Assert(!d_inCheckSat, "Sat solver in solve()!");
-  d_satSolver->pop();
+  if(options::markerIncremental()) {
+    Debug("markers") << "pop() -> first, pop the trail in minisat" << endl;
+    d_satSolver->popTrail();
+    SatLiteral oldMarker = d_markers.back();
+    d_markers.pop_back();
+    SatClause unit;
+    unit.push_back(oldMarker);
+    d_satSolver->addClause(unit, false);
+    Debug("markers") << "pop() -> added unit clause " << unit << endl;
+  } else {
+    d_satSolver->pop();
+  }
   Debug("prop") << "pop()" << endl;
 }
 

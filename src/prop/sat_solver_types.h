@@ -74,7 +74,7 @@ public:
    * Construct an undefined SAT literal.
    */
   SatLiteral()
-  : d_value(undefSatVariable)
+  : d_value(uint64_t(-1))
   {}
 
   /**
@@ -88,7 +88,7 @@ public:
    * Returns the variable of the literal.
    */
   SatVariable getSatVariable() const {
-    return d_value >> 1;
+    return isNull() ? undefSatVariable : (d_value >> 1);
   }
 
   /**
@@ -123,9 +123,13 @@ public:
    * Returns a string representation of the literal.
    */
   std::string toString() const {
-    std::ostringstream os;
-    os << (isNegated()? "~" : "") << getSatVariable() << " ";
-    return os.str();
+    if(isNull()) {
+      return "null ";
+    } else {
+      std::ostringstream os;
+      os << (isNegated() ? "~" : "") << getSatVariable() << " ";
+      return os.str();
+    }
   }
 
   /**
@@ -143,14 +147,14 @@ public:
    * Returns true if the literal is undefined.
    */
   bool isNull() const {
-    return getSatVariable() == undefSatVariable;
+    return d_value == uint64_t(-1);
   }
 };
 
 /**
  * A constant representing a undefined literal.
  */
-const SatLiteral undefSatLiteral = SatLiteral(undefSatVariable);
+const SatLiteral undefSatLiteral;
 
 /**
  * Helper for hashing the literals.

@@ -30,5 +30,8 @@ option minisatUseElim --minisat-elimination bool :default true :read-write
 
 option minisatDumpDimacs --minisat-dump-dimacs bool :default false
  instead of solving minisat dumps the asserted clauses in Dimacs format
- 
+
+option markerIncremental marker-incremental --marker-incremental bool :default false
+ use marker literals instead of clause deletion to do push/pop
+
 endmodule

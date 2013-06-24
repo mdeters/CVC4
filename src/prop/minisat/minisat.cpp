@@ -23,6 +23,7 @@
 #include "decision/options.h"
 
 using namespace CVC4;
+using namespace CVC4::context;
 using namespace CVC4::prop;
 
 //// DPllMinisatSatSolver
@@ -30,11 +31,13 @@ using namespace CVC4::prop;
 MinisatSatSolver::MinisatSatSolver() :
   d_minisat(NULL),
   d_theoryProxy(NULL),
-  d_context(NULL)
+  d_context(NULL),
+  d_assumps(NULL)
 {}
 
 MinisatSatSolver::~MinisatSatSolver() {
   delete d_minisat;
+  d_assumps->deleteSelf();
 }
 
 SatVariable MinisatSatSolver::toSatVariable(Minisat::Var var) {
@@ -111,9 +114,7 @@ void MinisatSatSolver::toSatClause(const Minisat::Clause& clause,
   Assert((unsigned)clause.size() == sat_clause.size());
 }
 
-void MinisatSatSolver::initialize(context::Context* context, TheoryProxy* theoryProxy)
-{
-
+void MinisatSatSolver::initialize(context::UserContext* userContext, context::Context* context, TheoryProxy* theoryProxy) {
   d_context = context;
 
   if( options::decisionMode() != decision::DECISION_STRATEGY_INTERNAL ) {
@@ -138,10 +139,19 @@ void MinisatSatSolver::initialize(context::Context* context, TheoryProxy* theory
   d_minisat->restart_first = options::satRestartFirst();
   d_minisat->restart_inc = options::satRestartInc();
 
+  d_assumps = new(true) CDList<SatLiteral>(userContext);
+
   d_statistics.init(d_minisat);
 }
 
 void MinisatSatSolver::addClause(SatClause& clause, bool removable) {
+  if(Debug.isOn("markers")) {
+    Debug("markers") << "adding clause:";
+    for(SatClause::iterator i = clause.begin(); i != clause.end(); ++i) {
+      Debug("markers") << " " << *i;
+    }
+    Debug("markers") << std::endl;
+  }
   Minisat::vec<Minisat::Lit> minisat_clause;
   toMinisatClause(clause, minisat_clause);
   d_minisat->addClause(minisat_clause, removable);
@@ -158,9 +168,15 @@ SatValue MinisatSatSolver::solve(unsigned long& resource) {
   } else {
     d_minisat->setConfBudget(resource);
   }
-  Minisat::vec<Minisat::Lit> empty;
   unsigned long conflictsBefore = d_minisat->conflicts;
-  SatValue result = toSatLiteralValue(d_minisat->solveLimited(empty));
+  Minisat::vec<Minisat::Lit> assumps;
+  Debug("markers") << "solving under assumptions: ";
+  for(CDList<SatLiteral>::const_iterator i = d_assumps->begin(); i != d_assumps->end(); ++i) {
+    assumps.push(toMinisatLit(*i));
+    Debug("markers") << " " << *i;
+  }
+  Debug("markers") << std::endl;
+  SatValue result = toSatLiteralValue(d_minisat->solveLimited(assumps));
   d_minisat->clearInterrupt();
   resource = d_minisat->conflicts - conflictsBefore;
   Trace("limit") << "SatSolver::solve(): it took " << resource << " conflicts" << std::endl;
@@ -169,9 +185,19 @@ SatValue MinisatSatSolver::solve(unsigned long& resource) {
 
 SatValue MinisatSatSolver::solve() {
   d_minisat->budgetOff();
-  return toSatLiteralValue(d_minisat->solve());
+  Minisat::vec<Minisat::Lit> assumps;
+  Debug("markers") << "solving under assumptions: ";
+  for(CDList<SatLiteral>::const_iterator i = d_assumps->begin(); i != d_assumps->end(); ++i) {
+    assumps.push(toMinisatLit(*i));
+    Debug("markers") << " " << *i;
+  }
+  Debug("markers") << std::endl;
+  return toSatLiteralValue(d_minisat->solve(assumps));
 }
 
+void MinisatSatSolver::assume(SatLiteral lit) {
+  d_assumps->push_back(lit);
+}
 
 void MinisatSatSolver::interrupt() {
   d_minisat->interrupt();
@@ -213,6 +239,10 @@ unsigned MinisatSatSolver::getAssertionLevel() const {
 
 void MinisatSatSolver::push() {
   d_minisat->push();
+}
+
+void MinisatSatSolver::popTrail(){
+  d_minisat->popTrail();
 }
 
 void MinisatSatSolver::pop(){
