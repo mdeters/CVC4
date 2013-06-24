@@ -300,7 +300,12 @@ operator SEXPR 0: "a symbolic expression"
 
 operator LAMBDA 2 "lambda"
 
-parameterized CHAIN BUILTIN 2: "chain operator"
+parameterized CHAIN CHAIN_OP 2: "chained operator"
+constant CHAIN_OP \
+    ::CVC4::Chain \
+    ::CVC4::ChainHashFunction \
+    "util/chain.h" \
+    "the chained operator"
 
 constant TYPE_CONSTANT \
     ::CVC4::TypeConstant \

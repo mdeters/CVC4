@@ -22,6 +22,7 @@
 #include "expr/attribute.h"
 #include "expr/node.h"
 #include "util/hash.h"
+#include "theory/rewriter.h"
 #include <map>
 #include <utility>
 
@@ -95,7 +96,8 @@ public:
   Node rewriteBooleanTerms(TNode n, bool boolParent = true, bool dtParent = false) throw() {
     std::map<TNode, Node> quantBoolVars;
     Assert(!(boolParent && dtParent));
-    return rewriteBooleanTermsRec(n, boolParent ? theory::THEORY_BOOL : (dtParent ? theory::THEORY_DATATYPES : theory::THEORY_BUILTIN), quantBoolVars);
+    Node n2 = theory::Rewriter::rewrite(n);
+    return rewriteBooleanTermsRec(n2, boolParent ? theory::THEORY_BOOL : (dtParent ? theory::THEORY_DATATYPES : theory::THEORY_BUILTIN), quantBoolVars);
   }
 
 };/* class BooleanTermConverter */
