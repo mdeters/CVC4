@@ -433,14 +433,18 @@ letTerm[CVC4::Expr& expr]
     tffLetFormulaDefn[lhs, rhs] COMMA_TOK
     term[expr]
     { PARSER_STATE->popScope();
+      std::cout << "substing[" << lhs << " ==> " << rhs << "] in " << expr << std::endl;
       expr = expr.substitute(lhs, rhs);
+      std::cout << "turned into " << expr << std::endl;
     }
     RPAREN_TOK
   | '$let_tt' LPAREN_TOK { PARSER_STATE->pushScope(); }
     tffLetTermDefn[lhs, rhs] COMMA_TOK
     term[expr]
     { PARSER_STATE->popScope();
+      std::cout << "substing[" << lhs << " ==> " << rhs << "] in " << expr << std::endl;
       expr = expr.substitute(lhs, rhs);
+      std::cout << "turned into " << expr << std::endl;
     }
     RPAREN_TOK
   ;
@@ -708,14 +712,18 @@ tffUnitaryFormula[CVC4::Expr& expr]
     tffLetTermDefn[lhs, rhs] COMMA_TOK
     tffFormula[expr]
     { PARSER_STATE->popScope();
+      std::cout << "substing[" << lhs << " ==> " << rhs << "] in " << expr << std::endl;
       expr = expr.substitute(lhs, rhs);
+      std::cout << "turned into " << expr << std::endl;
     }
     RPAREN_TOK
   | '$let_ff' LPAREN_TOK { PARSER_STATE->pushScope(); }
     tffLetFormulaDefn[lhs, rhs] COMMA_TOK
     tffFormula[expr]
     { PARSER_STATE->popScope();
+      std::cout << "substing[" << lhs << " ==> " << rhs << "] in " << expr << std::endl;
       expr = expr.substitute(lhs, rhs);
+      std::cout << "turned into " << expr << std::endl;
     }
     RPAREN_TOK
   ;
