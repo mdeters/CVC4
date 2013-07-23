@@ -549,7 +549,17 @@ ${all_modules_option_handlers}
         break;
       }
 
-      throw OptionException(std::string("can't understand option `") + option + "'");
+      std::stringstream ss;
+      ss << "can't understand option `" << option << "'.";
+      option = option.substr(option.find_first_not_of('-'));
+      std::vector<std::string> suggestions = suggestCommandLineOptions(option);
+      if(!suggestions.empty()) {
+        ss << std::endl << "Did you mean one of the following?";
+        for(size_t i = 0; i < suggestions.size(); ++i) {
+          ss << std::endl << "  --" << suggestions[i];
+        }
+      }
+      throw OptionException(ss.str());
     }
   }
 
