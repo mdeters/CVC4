@@ -193,6 +193,9 @@ public:
 
   void collectModelInfo( TheoryModel* m, bool fullModel );
 
+  Theory::PPAssertStatus ppAssert(TNode in, SubstitutionMap& outSubstitutions);
+
+  void solve();
   void ppStaticLearn(TNode in, NodeBuilder<>& learned);
   void presolve();
 

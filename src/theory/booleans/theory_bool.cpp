@@ -40,20 +40,25 @@ Theory::PPAssertStatus TheoryBool::ppAssert(TNode in, SubstitutionMap& outSubsti
 
   // Add the substitution from the variable to its value
   if (in.getKind() == kind::NOT) {
-    if (in[0].getKind() == kind::VARIABLE) {
+    if (in[0].isVar()) {
       outSubstitutions.addSubstitution(in[0], NodeManager::currentNM()->mkConst<bool>(false));
-    } else {
-      return PP_ASSERT_STATUS_UNSOLVED;
-    }
-  } else {
-    if (in.getKind() == kind::VARIABLE) {
-      outSubstitutions.addSubstitution(in, NodeManager::currentNM()->mkConst<bool>(true));
-    } else {
-      return PP_ASSERT_STATUS_UNSOLVED;
+      return PP_ASSERT_STATUS_SOLVED;
     }
   }
 
-  return PP_ASSERT_STATUS_SOLVED;
+  if (in.isVar()) {
+    outSubstitutions.addSubstitution(in, NodeManager::currentNM()->mkConst<bool>(true));
+    return PP_ASSERT_STATUS_SOLVED;
+  }
+
+  if (in.getKind() == kind::IFF) {
+    if (in[0].isVar()) {
+      outSubstitutions.addSubstitution(in[0], in[1]);
+      return PP_ASSERT_STATUS_SOLVED;
+    }
+  }
+
+  return PP_ASSERT_STATUS_UNSOLVED;
 }
 
 

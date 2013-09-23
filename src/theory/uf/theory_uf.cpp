@@ -233,6 +233,29 @@ void TheoryUF::presolve() {
   Debug("uf") << "uf: end presolve()" << endl;
 }
 
+Theory::PPAssertStatus TheoryUF::ppAssert(TNode in, SubstitutionMap& outSubstitutions) {
+  // Add the substitution from the variable to its value
+  if (in.getKind() == kind::NOT) {
+    if (in[0].isVar()) {
+      outSubstitutions.addSubstitution(in[0], NodeManager::currentNM()->mkConst<bool>(false));
+      return PP_ASSERT_STATUS_SOLVED;
+    }
+  }
+  if (in.isVar()) {
+    outSubstitutions.addSubstitution(in, NodeManager::currentNM()->mkConst<bool>(true));
+    return PP_ASSERT_STATUS_SOLVED;
+  }
+
+  if (in.getKind() == kind::EQUAL) {
+    if (in[0].isVar()) {
+      outSubstitutions.addSubstitution(in[0], in[1]);
+      return PP_ASSERT_STATUS_SOLVED;
+    }
+  }
+
+  return PP_ASSERT_STATUS_UNSOLVED;
+}
+
 void TheoryUF::ppStaticLearn(TNode n, NodeBuilder<>& learned) {
   //TimerStat::CodeTimer codeTimer(d_staticLearningTimer);
 
