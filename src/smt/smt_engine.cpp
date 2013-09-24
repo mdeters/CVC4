@@ -604,6 +604,46 @@ public:
     return val;
   }
 
+  std::hash_map<Node, Node, NodeHashFunction> hm;
+  Node crazyHack(TNode n) {
+    Trace("mgd-crazy") << "crazyHack :: " << n << std::endl;
+
+    if(n.getMetaKind() == kind::metakind::CONSTANT || n.getMetaKind() == kind::metakind::VARIABLE) {
+      return n;
+    }
+
+    if(hm.find(n) != hm.end()) {
+      Trace("mgd-crazy") << "in cache :: " << hm[n] << std::endl;
+      return hm[n];
+    }
+    if(n.getKind() == kind::APPLY_UF && n.getNumChildren() == 1 && n[0].isConst() && n[0].getType().isInteger()) {
+      stringstream ss;
+
+      ss << n.getOperator() << "_";
+      if(n[0].getConst<Rational>() < 0) {
+        ss << "m" << -n[0].getConst<Rational>();
+      } else {
+        ss << n[0];
+      }
+      Node newvar = NodeManager::currentNM()->mkSkolem(ss.str(), n.getType(), "crazy hack skolem", NodeManager::SKOLEM_EXACT_NAME);
+      hm[n] = newvar;
+      Trace("mgd-crazy") << "made :: " << newvar << std::endl;
+      return newvar;
+    }
+
+    NodeBuilder<> builder(n.getKind());
+    if(n.getMetaKind() == kind::metakind::PARAMETERIZED) {
+      builder << n.getOperator();
+    }
+    for(unsigned i = 0; i < n.getNumChildren(); ++i) {
+      builder << crazyHack(n[i]);
+    }
+    Node rewr = builder;
+    hm[n] = rewr;
+    Trace("mgd-crazy") << "built :: " << rewr << std::endl;
+    return rewr;
+  }
+
 };/* class SmtEnginePrivate */
 
 }/* namespace CVC4::smt */
@@ -3136,6 +3176,28 @@ void SmtEnginePrivate::processAssertions() {
     }
   }
   dumpAssertions("post-repeat-simplify", d_assertionsToCheck);
+
+  dumpAssertions("pre-crazy-hack", d_assertionsToCheck);
+  {
+    if(options::crazyHack()) {
+      Chat() << "crazy KIND hack..." << endl;
+      TimerStat::CodeTimer codeTimer(d_smt.d_stats->d_theoryPreprocessTime);
+      for (unsigned i = 0; i < d_assertionsToCheck.size(); ++ i) {
+        d_assertionsToCheck[i] = Rewriter::rewrite(crazyHack(d_assertionsToCheck[i]));
+      }
+      d_smt.d_logic = d_smt.d_logic.getUnlockedCopy();
+      d_smt.d_logic.disableEverything();
+      d_smt.d_logic = d_smt.d_logic.getUnlockedCopy();
+      d_smt.d_logic.enableTheory(THEORY_ARITH);
+      d_smt.d_logic.arithOnlyLinear();
+      d_smt.d_logic.enableIntegers();
+      d_smt.d_logic.disableReals();
+      d_smt.d_logic.lock();
+      Assert(d_smt.d_logic.isPure(THEORY_ARITH));
+      Assert(!d_smt.d_logic.isSharingEnabled());
+    }
+  }
+  dumpAssertions("post-crazy-hack", d_assertionsToCheck);
 
   // begin: INVARIANT to maintain: no reordering of assertions or
   // introducing new ones

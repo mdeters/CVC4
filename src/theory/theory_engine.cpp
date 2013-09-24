@@ -732,7 +732,8 @@ theory::Theory::PPAssertStatus TheoryEngine::solve(TNode literal, SubstitutionMa
   TNode atom = literal.getKind() == kind::NOT ? literal[0] : literal;
   Trace("theory::solve") << "TheoryEngine::solve(" << literal << "): solving with " << theoryOf(atom)->getId() << endl;
 
-  if(! d_logicInfo.isTheoryEnabled(Theory::theoryOf(atom)) &&
+  if(! options::crazyHack() &&
+     ! d_logicInfo.isTheoryEnabled(Theory::theoryOf(atom)) &&
      Theory::theoryOf(atom) != THEORY_SAT_SOLVER) {
     stringstream ss;
     ss << "The logic was specified as " << d_logicInfo.getLogicString()
@@ -821,7 +822,8 @@ Node TheoryEngine::preprocess(TNode assertion) {
       continue;
     }
 
-    if(! d_logicInfo.isTheoryEnabled(Theory::theoryOf(current)) &&
+    if(! options::crazyHack() &&
+       ! d_logicInfo.isTheoryEnabled(Theory::theoryOf(current)) &&
        Theory::theoryOf(current) != THEORY_SAT_SOLVER) {
       stringstream ss;
       ss << "The logic was specified as " << d_logicInfo.getLogicString()
