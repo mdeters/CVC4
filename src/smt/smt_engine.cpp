@@ -1040,6 +1040,24 @@ void SmtEngine::setDefaults() {
     }
   }
 
+  // strings require LIA, UF; widen the logic
+  if(d_logic.isTheoryEnabled(THEORY_STRINGS)) {
+    LogicInfo log(d_logic.getUnlockedCopy());
+    // Strings requires arith for length constraints, and also UF
+    if(!d_logic.isTheoryEnabled(THEORY_UF)) {
+      Trace("smt") << "because strings are enabled, also enabling UF" << endl;
+      log.enableTheory(THEORY_UF);
+    }
+    if(!d_logic.isTheoryEnabled(THEORY_ARITH) || d_logic.isDifferenceLogic() || !d_logic.areIntegersUsed()) {
+      Trace("smt") << "because strings are enabled, also enabling linear integer arithmetic" << endl;
+      log.enableTheory(THEORY_ARITH);
+      log.enableIntegers();
+      log.arithOnlyLinear();
+    }
+    d_logic = log;
+    d_logic.lock();
+  }
+
   // by default, symmetry breaker is on only for QF_UF
   if(! options::ufSymmetryBreaker.wasSetByUser()) {
     bool qf_uf = d_logic.isPure(THEORY_UF) && !d_logic.isQuantified();
