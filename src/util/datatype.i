@@ -23,7 +23,7 @@
   %ignore set(int i, const CVC4::Datatype& x);
   %ignore to_array();
 };
-//%template(vectorDatatype) std::vector< CVC4::Datatype >;
+%template(vectorDatatype) std::vector< CVC4::Datatype >;
 
 %extend std::vector< CVC4::DatatypeConstructor > {
   /* These member functions have slightly different signatures in
@@ -49,8 +49,8 @@
 %ignore CVC4::Datatype::begin() const;
 %ignore CVC4::Datatype::end() const;
 
-%rename(getConstructor) CVC4::Datatype::operator[](size_t) const;
-%ignore CVC4::Datatype::operator[](std::string) const;
+%rename(get) CVC4::Datatype::operator[](size_t) const;
+%rename(get) CVC4::Datatype::operator[](std::string) const;
 
 %rename(apply) CVC4::DatatypeHashFunction::operator()(const Datatype&) const;
 %ignore CVC4::DatatypeHashFunction::operator()(const Datatype*) const;
@@ -62,8 +62,8 @@
 %ignore CVC4::DatatypeConstructor::begin() const;
 %ignore CVC4::DatatypeConstructor::end() const;
 
-%rename(getArg) CVC4::DatatypeConstructor::operator[](size_t) const;
-%rename(getArg) CVC4::DatatypeConstructor::operator[](std::string) const;
+%rename(get) CVC4::DatatypeConstructor::operator[](size_t) const;
+%rename(get) CVC4::DatatypeConstructor::operator[](std::string) const;
 
 %ignore CVC4::operator<<(std::ostream&, const Datatype&);
 %ignore CVC4::operator<<(std::ostream&, const DatatypeConstructor&);
@@ -84,10 +84,29 @@
   CVC4::JavaIteratorAdapter<CVC4::Datatype> iterator() {
     return CVC4::JavaIteratorAdapter<CVC4::Datatype>(*$self);
   }
+
+  std::string toString() const {
+    std::stringstream ss;
+    ss << *$self;
+    return ss.str();
+  }
 }
 %extend CVC4::DatatypeConstructor {
   CVC4::JavaIteratorAdapter<CVC4::DatatypeConstructor> iterator() {
     return CVC4::JavaIteratorAdapter<CVC4::DatatypeConstructor>(*$self);
+  }
+
+  std::string toString() const {
+    std::stringstream ss;
+    ss << *$self;
+    return ss.str();
+  }
+}
+%extend CVC4::DatatypeConstructorArg {
+  std::string toString() const {
+    std::stringstream ss;
+    ss << *$self;
+    return ss.str();
   }
 }
 
