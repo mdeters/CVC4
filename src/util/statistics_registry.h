@@ -43,6 +43,7 @@ namespace CVC4 {
 
 class ExprManager;
 class SmtEngine;
+class StatisticsRegistry;
 
 /**
  * The base class for all statistics.
@@ -58,6 +59,8 @@ class Stat {
 protected:
   /** The name of this statistic */
   std::string d_name;
+
+  friend class StatisticsRegistry;
 
 public:
 
@@ -593,6 +596,9 @@ private:
   /** Private copy constructor undefined (no copy permitted). */
   StatisticsRegistry(const StatisticsRegistry&) CVC4_UNDEFINED;
 
+  /** For registering multiple stats with the same name. */
+  std::map<std::string, unsigned> d_sequenceNumber;
+
 public:
 
   /** Construct an nameless statistics registry */
@@ -643,12 +649,18 @@ public:
   /** Register a new statistic, making it active. */
   static void registerStat(Stat* s) throw(CVC4::IllegalArgumentException);
 
+  /** Register a new statistic, making it active; changes name to be unique if necessary. */
+  static void registerStatMultiple(Stat* s) throw();
+
   /** Unregister an active statistic, making it inactive. */
   static void unregisterStat(Stat* s) throw(CVC4::IllegalArgumentException);
 #endif /* (__BUILDING_CVC4LIB || __BUILDING_CVC4LIB) && ! __BUILDING_STATISTICS_FOR_EXPORT */
 
   /** Register a new statistic */
   void registerStat_(Stat* s) throw(CVC4::IllegalArgumentException);
+
+  /** Register a new statistic */
+  void registerStatMultiple_(Stat* s) throw();
 
   /** Unregister a new statistic */
   void unregisterStat_(Stat* s) throw(CVC4::IllegalArgumentException);
@@ -865,7 +877,7 @@ public:
 #define KEEP_STATISTIC(_StatType, _StatField, _StatName, _CtorArgs...)  \
   struct Statistic_##_StatField : public _StatType {                    \
     Statistic_##_StatField() : _StatType(_StatName, ## _CtorArgs) {     \
-      StatisticsRegistry::registerStat(this);                           \
+      StatisticsRegistry::registerStatMultiple(this);                   \
     }                                                                   \
     ~Statistic_##_StatField() {                                         \
       StatisticsRegistry::unregisterStat(this);                         \

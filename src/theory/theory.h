@@ -261,7 +261,7 @@ protected:
   , d_valuation(valuation)
   , d_proofEnabled(false)
   {
-    StatisticsRegistry::registerStat(&d_computeCareGraphTime);
+    StatisticsRegistry::registerStatMultiple(&d_computeCareGraphTime);
   }
 
   /**
