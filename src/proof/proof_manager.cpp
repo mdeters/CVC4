@@ -179,9 +179,15 @@ void ProofManager::printProof(std::ostream& os, TNode n) {
   theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic, NULL);
   uf.produceProofs();
   for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
+    Debug("mgd") << "asserting " << *i << std::endl;
     uf.assertFact(*i, false);
   }
   uf.check(theory::Theory::EFFORT_FULL);
+  Debug("mgd") << "got conflict " << oc.d_conflict << std::endl
+               << "and proof " << oc.d_proof << ":" << std::endl;
+Debug("mgd") << "PROOF[[" << std::endl;
+((theory::eq::EqProof*)(oc.d_proof))->debug_print("mgd");
+Debug("mgd") << "]]" << std::endl;
   oc.d_proof->toStream(os);
 }
 

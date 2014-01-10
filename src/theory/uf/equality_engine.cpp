@@ -1023,6 +1023,7 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
             EqProof *eqpc = NULL;
             if(eqp) {
               // make child proof if a proof is being constructed
+Debug("equality") << "made child proof " << reasonType << std::endl;
               eqpc = new EqProof();
               eqpc->d_id = reasonType;
             }
@@ -1041,11 +1042,39 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
               if(eqpc) {
                 eqpc->d_children.push_back( eqpc1 );
                 eqpc->d_children.push_back( eqpc2 );
+Debug("mgdx") << "HRRM, so " << f1.a << " / " << f2.a << "\n";
+Debug("mgdx") << "HRRM, so " << d_nodes[f1.a] << " / " << d_nodes[f2.a] << "\n"
+              << "         " << d_nodes[f1.b] << " / " << d_nodes[f2.b] << "\n";
                 if(d_nodes[f1.a].getKind() == kind::APPLY_UF) {
                   eqpc->d_node = d_nodes[f1.a];
                 } else {
                   eqpc->d_node = NodeManager::currentNM()->mkNode(kind::PARTIAL_APPLY_UF, d_nodes[f1.a], d_nodes[f1.b]);
                 }
+                std::stringstream ss, ss2;
+#ifdef CVC4_DEBUG
+                // expensive check
+                Node proven1 = toStreamRecLFSC(ss, eqpc1, 2);
+                Node proven2 = toStreamRecLFSC(ss2, eqpc2, 2);
+Debug("mgdx") << "in cong, my left child proves  " << proven1 << std::endl;
+Debug("mgdx") << "         my right child proves " << proven2 << std::endl;
+Debug("mgdx") << "         my directionality is  " << eqpc->d_node << std::endl;
+Debug("mgdx") << "proof of left:" << std::endl << ss.str() << std::endl;
+eqpc1->debug_print("mgdx");
+Debug("mgdx") << "proof of right:" << std::endl << ss2.str() << std::endl;
+Debug("mgdx") << "t1id is " << t1Id << " t2id is " << t2Id << std::endl;
+Debug("mgdx") << "t1id is " << d_nodes[t1Id] << " t2id is " << d_nodes[t2Id] << std::endl;
+                Node proven = toStreamRecLFSC(ss, eqpc, 2);
+                Assert(match(proven[0], eqpc->d_node) == match(eqpc->d_node, proven[0]));
+                Assert(match(proven[1], eqpc->d_node) == match(eqpc->d_node, proven[1]));
+                if(!match(proven[0], eqpc->d_node) && !match(proven[1], eqpc->d_node)) {
+                  Debug("mgd") << "failed assertion, have " << eqpc->d_node << std::endl;
+                  Debug("mgd") << "          but proven   " << proven << std::endl;
+                  eqpc->debug_print("mgd");
+                  Debug("mgd") << std::endl;
+                  Debug("mgd") << std::endl;
+                  InternalError();
+                }
+#endif
               }
               Debug("equality") << pop;
               break;
@@ -2144,15 +2173,19 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
     Node n1;
     std::stringstream ss;
     Assert(subTrans.d_children.size() == pf->d_children.size() - 1);
+Debug("mgdx") << "\nsubtrans has " << subTrans.d_children.size() << " children\n";
     if(pf->d_children.size() > 2) {
       n1 = toStreamRecLFSC(ss, &subTrans, 1);
     } else {
       n1 = toStreamRecLFSC(ss, subTrans.d_children[0], 1);
+Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << " was proven\ngot: " << n1 << std::endl;
     }
 
     Node n2 = pf->d_children[neg]->d_node;
     Assert(n2.getKind() == kind::NOT);
     out << "(clausify_false (contra _ ";
+    Debug("mgdx") << "\nhave proven: " << n1 << std::endl;
+    Debug("mgdx") << "n2 is " << n2[0] << std::endl;
     if(n2[0].getKind() == kind::APPLY_UF) {
       out << "(trans _ _ _ _ ";
       out << "(symm _ _ _ ";
@@ -2190,10 +2223,24 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
     out << " ";
     std::stringstream ss;
     Node n2 = toStreamRecLFSC(ss, pf2->d_children[1], tb + 1);
+Debug("mgd") << "\nok, in FIRST cong[" << stk.size() << "]" << "\n";
+Debug("mgd") << "looking at " << pf2->d_node << "\n";
+Debug("mgd") << "           " << n1 << "\n";
+Debug("mgd") << "           " << n2 << "\n";
     int side = 0;
     if(match(pf2->d_node, n1[0])) {
+if(tb == 1) {
+Debug("mgd") << "SIDE IS 0\n";
+}
       side = 0;
     } else {
+if(tb == 1) {
+Debug("mgd") << "SIDE IS 1\n";
+}
+if(!match(pf2->d_node, n1[1])) {
+Debug("mgd") << "IN BAD CASE, our first subproof is\n";
+pf2->d_children[0]->debug_print("mgd");
+}
       Assert(match(pf2->d_node, n1[1]));
       side = 1;
     }
@@ -2221,12 +2268,21 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
     }
     out << ")";
     while(!stk.empty()) {
+if(tb == 1) {
+Debug("mgd") << "\nMORE TO DO\n";
+}
       pf2 = stk.top();
       stk.pop();
       Assert(pf2->d_id == MERGED_THROUGH_CONGRUENCE);
       out << " ";
       ss.str("");
       n2 = toStreamRecLFSC(ss, pf2->d_children[1], tb + 1);
+Debug("mgd") << "\nok, in cong[" << stk.size() << "]" << "\n";
+Debug("mgd") << "looking at " << pf2->d_node << "\n";
+Debug("mgd") << "           " << n1 << "\n";
+Debug("mgd") << "           " << n2 << "\n";
+Debug("mgd") << "           " << b1 << "\n";
+Debug("mgd") << "           " << b2 << "\n";
       if(pf2->d_node[b1.getNumChildren()] == n2[side]) {
         b1 << n2[side];
         b2 << n2[1-side];
@@ -2241,6 +2297,7 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
     }
     n1 = b1;
     n2 = b2;
+Debug("mgd") << "at end assert, got " << pf2->d_node << "  and  " << n1 << std::endl;
     if(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF) {
       Assert(n1 == pf2->d_node);
     }
@@ -2249,6 +2306,7 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
       b1 << n1.getOperator();
       b1.append(n1.begin(), n1.end());
       n1 = b1;
+Debug("mgd") << "at[2] end assert, got " << pf2->d_node << "  and  " << n1 << std::endl;
       if(pf2->d_node.getKind() == kind::APPLY_UF) {
         Assert(n1 == pf2->d_node);
       }
@@ -2260,6 +2318,9 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
       n2 = b2;
     }
     Node n = (side == 0 ? eqNode(n1, n2) : eqNode(n2, n1));
+if(tb == 1) {
+Debug("mgdx") << "\ncong proved: " << n << "\n";
+}
     return n;
   }
 
@@ -2281,49 +2342,83 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
     Assert(!pf->d_node.isNull());
     Assert(pf->d_children.size() >= 2);
     std::stringstream ss;
+Debug("mgd") << "\ndoing trans proof[[\n";
+pf->debug_print("mgd");
+Debug("mgd") << "\n";
     Node n1 = toStreamRecLFSC(ss, pf->d_children[0], tb + 1);
+Debug("mgd") << "\ndoing trans proof, got n1 " << n1 << "\n";
+if(tb == 1) {
+Debug("mgdx") << "\ntrans proof[0], got n1 " << n1 << "\n";
+}
     for(size_t i = 1; i < pf->d_children.size(); ++i) {
       std::stringstream ss1(ss.str()), ss2;
       ss.str("");
       Node n2 = toStreamRecLFSC(ss2, pf->d_children[i], tb + 1);
+Debug("mgd") << "\ndoing trans proof, got n2 " << n2 << "\n";
+if(tb == 1) {
+Debug("mgdx") << "\ntrans proof[" << i << "], got n2 " << n2 << "\n";
+Debug("mgdx") << (n2.getKind() == kind::EQUAL || n2.getKind() == kind::IFF) << "\n";
+Debug("mgdx") << n1[0].getId() << " " << n1[1].getId() << " / " << n2[0].getId() << " " << n2[1].getId() << "\n";
+Debug("mgdx") << n1[0].getId() << " " << n1[0] << "\n";
+Debug("mgdx") << n1[1].getId() << " " << n1[1] << "\n";
+Debug("mgdx") << n2[0].getId() << " " << n2[0] << "\n";
+Debug("mgdx") << n2[1].getId() << " " << n2[1] << "\n";
+Debug("mgdx") << (n1[0] == n2[0]) << "\n";
+Debug("mgdx") << (n1[1] == n2[1]) << "\n";
+Debug("mgdx") << (n1[0] == n2[1]) << "\n";
+Debug("mgdx") << (n1[1] == n2[0]) << "\n";
+}
       ss << "(trans _ _ _ _ ";
       if(n2.getKind() == kind::EQUAL || n2.getKind() == kind::IFF) {
         if(n1[0] == n2[0]) {
-          if(n1[1] == n2[1] && match(n1[0], pf->d_node[0])) {
-            if(match(n1[1], pf->d_node[1])) {
-              //Warning() << "TRICKY CASE 1!\n";
-              ss.str(ss1.str());
-              break;
-            }
-            //ambiguity -- could replace with refl
-            n1 = eqNode(n1[0], n2[0]);
-            ss << ss1.str() << " (symm _ _ _ " << ss2.str() << ")";
-          } else {
-            n1 = eqNode(n1[1], n2[1]);
-            ss << "(symm _ _ _ " << ss1.str() << ") " << ss2.str();
-          }
+if(n1[1] == n2[1] && match(n1[0], pf->d_node[0])) {
+if(match(n1[1], pf->d_node[1])) {
+//Warning() << "TRICKY CASE 1!\n";
+ss.str(ss1.str());
+break;
+}
+//ambiguity -- could replace with refl
+          n1 = eqNode(n1[0], n2[0]);
+          ss << ss1.str() << " (symm _ _ _ " << ss2.str() << ")";
+} else {
+if(tb == 1) { Debug("mgdx") << "case 1\n"; }
+          n1 = eqNode(n1[1], n2[1]);
+          ss << "(symm _ _ _ " << ss1.str() << ") " << ss2.str();
+}
         } else if(n1[1] == n2[1]) {
+if(tb == 1) { Debug("mgdx") << "case 2\n"; }
           n1 = eqNode(n1[0], n2[0]);
           ss << ss1.str() << " (symm _ _ _ " << ss2.str() << ")";
         } else if(n1[0] == n2[1]) {
-          if(n1[1] == n2[0] && match(n1[0], pf->d_node[0])) {
-            if(match(n1[1], pf->d_node[1])) {
-              //Warning() << "TRICKY CASE 2!\n";
-              ss.str(ss1.str());
-              break;
-            }
-            //ambiguity -- could replace with refl
-            n1 = eqNode(n1[0], n2[1]);
-            ss << ss1.str() << " " << ss2.str();
-        } else {
+if(n1[1] == n2[0] && match(n1[0], pf->d_node[0])) {
+if(match(n1[1], pf->d_node[1])) {
+//Warning() << "TRICKY CASE 2!\n";
+ss.str(ss1.str());
+break;
+}
+//ambiguity -- could replace with refl
+          n1 = eqNode(n1[0], n2[1]);
+Debug("mgdx") << "ambiguity resolved in favor of " << n1 << "\n";
+          ss << ss1.str() << " " << ss2.str();
+} else {
+if(tb == 1) { Debug("mgdx") << "case 3\n"; }
           n1 = eqNode(n2[0], n1[1]);
           ss << ss2.str() << " " << ss1.str();
+if(tb == 1) { Debug("mgdx") << "++ proved " << n1 << "\n"; }
+}
         } else if(n1[1] == n2[0]) {
+if(tb == 1) { Debug("mgdx") << "case 4\n"; }
           n1 = eqNode(n1[0], n2[1]);
           ss << ss1.str() << " " << ss2.str();
         } else {
+Warning() << "\n\ntrans proof failure at step " << i << "\n\n";
+Warning() << "0 proves " << n1 << "\n";
+Warning() << "1 proves " << n2 << "\n\n";
+toStreamRec(Warning.getStream(), pf, 0);
+Warning() << "\n\n";
           Unreachable();
         }
+Debug("mgd") << "++ trans proof[" << i << "], now have " << n1 << std::endl;
       } else {
         if(n1[0] == n2) {
           n1 = n1[1];
@@ -2338,6 +2433,7 @@ static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned t
       ss << ")";
     }
     out << ss.str();
+Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
     return n1;
   }
 
