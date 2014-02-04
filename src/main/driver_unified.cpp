@@ -290,12 +290,17 @@ int runCvc4(int argc, char* argv[], Options& opts) {
         // have the replay parser use the file's declarations
         replayParser->useDeclarationsFrom(parser);
       }
+      std::cout << Expr::dag(0);
       while(status && (cmd = parser->nextCommand())) {
-        if(dynamic_cast<QuitCommand*>(cmd) != NULL) {
+        if(dynamic_cast<SetBenchmarkLogicCommand*>(cmd) == NULL) {
+          std::cout << *cmd << std::endl;
+        }
+/*      if(dynamic_cast<QuitCommand*>(cmd) != NULL) {
           delete cmd;
           break;
         }
         status = pExecutor->doCommand(cmd);
+*/
         delete cmd;
       }
       // Remove the parser

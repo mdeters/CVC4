@@ -86,6 +86,21 @@ static std::string maybeQuoteSymbol(const std::string& s) {
   return s;
 }
 
+static bool stringifyRegexp(Node n, stringstream& ss) {
+  if(n.getKind() == kind::STRING_TO_REGEXP) {
+    ss << n[0].getConst<String>().toString();
+  } else if(n.getKind() == kind::REGEXP_CONCAT) {
+    for(unsigned i = 0; i < n.getNumChildren(); ++i) {
+      if(!stringifyRegexp(n[i], ss)) {
+        return false;
+      }
+    }
+  } else {
+    return false;
+  }
+  return true;
+}
+
 void Smt2Printer::toStream(std::ostream& out, TNode n,
                            int toDepth, bool types) const throw() {
   // null
@@ -275,9 +290,37 @@ void Smt2Printer::toStream(std::ostream& out, TNode n,
   case kind::ARRAY_TYPE: out << smtKindString(k) << " "; break;
 
   // string theory
-  case kind::STRING_CONCAT: out << "str.++ "; break;
-  case kind::STRING_IN_REGEXP: out << "str.in.re "; break;
-  case kind::STRING_LENGTH: out << "str.len "; break;
+  case kind::STRING_CONCAT:
+    out << "Concat ";
+    for(unsigned i = 0; i < n.getNumChildren(); ++i) {
+      toStream(out, n[i], -1, types);
+      if(i + 1 < n.getNumChildren()) {
+        out << ' ';
+      }
+      if(i + 2 < n.getNumChildren()) {
+        out << "(Concat ";
+      }
+    }
+    for(unsigned i = 0; i < n.getNumChildren() - 1; ++i) {
+      out << ")";
+    }
+    return;
+
+  case kind::STRING_IN_REGEXP: {
+    stringstream ss;
+    if(stringifyRegexp(n[1], ss)) {
+      out << "= ";
+      toStream(out, n[0], -1, types);
+      out << " ";
+      Node str = NodeManager::currentNM()->mkConst(String(ss.str()));
+      toStream(out, str, -1, types);
+      out << ")";
+      return;
+    }
+    out << "str.in.re ";
+    break;
+  }
+
   case kind::STRING_SUBSTR: out << "str.substr "; break;
   case kind::STRING_CHARAT: out << "str.at "; break;
   case kind::STRING_STRCTN: out << "str.contain "; break;
@@ -293,6 +336,8 @@ void Smt2Printer::toStream(std::ostream& out, TNode n,
   case kind::REGEXP_PLUS: out << "re.+ "; break;
   case kind::REGEXP_OPT: out << "re.opt "; break;
   case kind::REGEXP_RANGE: out << "re.range "; break;
+
+  case kind::STRING_LENGTH: out << "Length "; break;
 
     // bv theory
   case kind::BITVECTOR_CONCAT: out << "concat "; break;
@@ -749,7 +794,7 @@ static void toStream(std::ostream& out, const PopCommand* c) throw() {
 
 static void toStream(std::ostream& out, const CheckSatCommand* c) throw() {
   Expr e = c->getExpr();
-  if(!e.isNull()) {
+  if(!e.isNull() && !(e.getKind() == kind::CONST_BOOLEAN && e.getConst<bool>())) {
     out << PushCommand() << endl
         << AssertCommand(e) << endl
         << CheckSatCommand() << endl
