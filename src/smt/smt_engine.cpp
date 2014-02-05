@@ -1842,6 +1842,9 @@ void SmtEnginePrivate::staticLearning() {
 
   Trace("simplify") << "SmtEnginePrivate::staticLearning()" << endl;
 
+  Context ctxt;// fake context
+  SubstitutionMap newSubstitutions(&ctxt);
+
   for (unsigned i = 0; i < d_assertionsToCheck.size(); ++ i) {
 
     NodeBuilder<> learned(kind::AND);
@@ -1850,7 +1853,20 @@ void SmtEnginePrivate::staticLearning() {
     if(learned.getNumChildren() == 1) {
       learned.clear();
     } else {
+      for(unsigned j = 1; j < learned.getNumChildren(); ++j) {
+        if(learned[j].getKind() == kind::EQUAL && learned[j][0].isVar()) {
+Debug("mgd") << "GOT NEW SUBS: " << learned[j][0] << " |-> " << learned[j][1] << std::endl;
+          d_topLevelSubstitutions.addSubstitution(learned[j][0], learned[j][1]);
+          newSubstitutions.addSubstitution(learned[j][0], learned[j][1]);
+        }
+      }
       d_assertionsToCheck[i] = learned;
+    }
+  }
+
+  if(!newSubstitutions.empty()) {
+    for (unsigned i = 0; i < d_assertionsToCheck.size(); ++ i) {
+      d_assertionsToCheck[i] = newSubstitutions.apply(d_assertionsToCheck[i]);
     }
   }
 }
