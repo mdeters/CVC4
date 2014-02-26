@@ -198,16 +198,15 @@ tokens {
   // Strings
 
   STRING_TOK = 'STRING';
-  SCONCAT_TOK = 'SCONCAT';
   SCONTAINS_TOK = 'CONTAINS';
   SSUBSTR_TOK = 'SUBSTR';
   SINDEXOF_TOK = 'INDEXOF';
   SREPLACE_TOK = 'REPLACE';
   SPREFIXOF_TOK = 'PREFIXOF';
   SSUFFIXOF_TOK = 'SUFFIXOF';
-  STOINTEGER_TOK = 'TO_INTEGER';
-  STOSTRING_TOK = 'TO_STRING';
-  STORE_TOK = 'TO_RE';
+  STO_INTEGER_TOK = 'TO_INTEGER';
+  STO_STRING_TOK = 'TO_STRING';
+  STO_RE_TOK = 'TO_RE';
 
   // these are parsed by special NUMBER_OR_RANGEOP rule, below
   DECIMAL_LITERAL;
@@ -306,7 +305,8 @@ int getOperatorPrecedence(int type) {
   }
 }/* getOperatorPrecedence() */
 
-Kind getOperatorKind(int type, bool& negate) {
+enum OperatorMode { BV_MODE, STRING_MODE, REGEX_MODE };
+Kind getOperatorKind(int type, bool& negate, OperatorMode mode) {
   negate = false;
 
   switch(type) {
@@ -334,10 +334,27 @@ Kind getOperatorKind(int type, bool& negate) {
   case DIV_TOK: return kind::DIVISION;
   case EXP_TOK: return kind::POW;
 
-    // bvBinop
-  case CONCAT_TOK: return kind::BITVECTOR_CONCAT;
-  case BAR: return kind::BITVECTOR_OR;
-  case BVAND_TOK: return kind::BITVECTOR_AND;
+    // bv / string / regex ops
+  case CONCAT_TOK:
+    if(mode == BV_MODE) {
+      return kind::BITVECTOR_CONCAT;
+    } else if(mode == STRING_MODE) {
+      return kind::STRING_CONCAT;
+    } else {
+      return kind::REGEXP_CONCAT;
+    }
+  case BAR:
+    if(mode == BV_MODE) {
+      return kind::BITVECTOR_OR;
+    } else {
+      return kind::REGEXP_UNION;
+    }
+  case BVAND_TOK:
+    if(mode == BV_MODE) {
+      return kind::BITVECTOR_AND;
+    } else {
+      return kind::REGEXP_INTER;
+    }
   }
 
   std::stringstream ss;
@@ -370,7 +387,8 @@ unsigned findPivot(const std::vector<unsigned>& operators,
 Expr createPrecedenceTree(Parser* parser, ExprManager* em,
                           const std::vector<CVC4::Expr>& expressions,
                           const std::vector<unsigned>& operators,
-                          unsigned startIndex, unsigned stopIndex) {
+                          unsigned startIndex, unsigned stopIndex,
+                          OperatorMode mode) {
   assert(expressions.size() == operators.size() + 1);
   assert(startIndex < expressions.size());
   assert(stopIndex < expressions.size());
@@ -383,9 +401,9 @@ Expr createPrecedenceTree(Parser* parser, ExprManager* em,
   unsigned pivot = findPivot(operators, startIndex, stopIndex - 1);
   //Debug("prec") << "pivot[" << startIndex << "," << stopIndex - 1 << "] at " << pivot << std::endl;
   bool negate;
-  Kind k = getOperatorKind(operators[pivot], negate);
-  Expr lhs = createPrecedenceTree(parser, em, expressions, operators, startIndex, pivot);
-  Expr rhs = createPrecedenceTree(parser, em, expressions, operators, pivot + 1, stopIndex);
+  Kind k = getOperatorKind(operators[pivot], negate, mode);
+  Expr lhs = createPrecedenceTree(parser, em, expressions, operators, startIndex, pivot, mode);
+  Expr rhs = createPrecedenceTree(parser, em, expressions, operators, pivot + 1, stopIndex, mode);
   if(k == kind::EQUAL && lhs.getType().isBoolean()) {
     if(parser->strictModeEnabled()) {
       WarningOnce() << "Warning: in strict parsing mode, will not convert BOOL = BOOL to BOOL <=> BOOL" << std::endl;
@@ -399,7 +417,8 @@ Expr createPrecedenceTree(Parser* parser, ExprManager* em,
 
 Expr createPrecedenceTree(Parser* parser, ExprManager* em,
                           const std::vector<CVC4::Expr>& expressions,
-                          const std::vector<unsigned>& operators) {
+                          const std::vector<unsigned>& operators,
+                          OperatorMode mode = BV_MODE) {
   if(Debug.isOn("prec") && operators.size() > 1) {
     for(unsigned i = 0; i < expressions.size(); ++i) {
       Debug("prec") << expressions[i];
@@ -410,7 +429,7 @@ Expr createPrecedenceTree(Parser* parser, ExprManager* em,
     Debug("prec") << std::endl;
   }
 
-  Expr e = createPrecedenceTree(parser, em, expressions, operators, 0, expressions.size() - 1);
+  Expr e = createPrecedenceTree(parser, em, expressions, operators, 0, expressions.size() - 1, mode);
   if(Debug.isOn("prec") && operators.size() > 1) {
     Expr::setlanguage::Scope ls(Debug("prec"), language::output::LANG_AST);
     Debug("prec") << "=> " << e << std::endl;
@@ -1547,12 +1566,30 @@ uminusTerm[CVC4::Expr& f]
   unsigned minusCount = 0;
 }
     /* Unary minus */
-  : (MINUS_TOK { ++minusCount; })+ bvBinaryOpTerm[f]
+  : (MINUS_TOK { ++minusCount; })+ stringTerm[f]
     { while(minusCount > 0) { --minusCount; f = MK_EXPR(CVC4::kind::UMINUS, f); } }
-  | bvBinaryOpTerm[f]
+  | stringTerm[f]
   ;
 
-/** Parses bitvectors.  Starts with binary operators @, &, and |. */
+/**
+ * Some string operations go here, since the BV binary ops are overloaded
+ * as string ops and we have to get the precedence right.
+ */
+stringTerm[CVC4::Expr& f]
+@init {
+  Expr f2;
+}
+  : BAR bvBinaryOpTerm[f] BAR
+    { f = MK_EXPR(CVC4::kind::STRING_LENGTH, f); }
+  | bvBinaryOpTerm[f]
+    ( { f.getType().isString() }? =>
+      /* the predicate above disambiguates dangling "IN" in e.g. "LET s = t IN u..." */
+      IN_TOK regex[f2]
+      { f = MK_EXPR(CVC4::kind::STRING_IN_REGEXP, f, f2); }
+    | /* nothing */ )
+  ;
+
+/** Parses bitvector and string operators (they are overloaded): binary operators @, &, and |. */
 bvBinaryOpTerm[CVC4::Expr& f]
 @init {
   std::vector<CVC4::Expr> expressions;
@@ -1560,16 +1597,18 @@ bvBinaryOpTerm[CVC4::Expr& f]
   unsigned op;
 }
   : bvNegTerm[f] { expressions.push_back(f); }
-    ( bvBinop[op] bvNegTerm[f] { operators.push_back(op); expressions.push_back(f); } )*
-    { f = createPrecedenceTree(PARSER_STATE, EXPR_MANAGER, expressions, operators); }
+    ( bvBinop[op, f] bvNegTerm[f] { operators.push_back(op); expressions.push_back(f); } )*
+    { OperatorMode mode = expressions[0].getType().isString() ? STRING_MODE : BV_MODE;
+      f = createPrecedenceTree(PARSER_STATE, EXPR_MANAGER, expressions, operators, mode); }
   ;
-bvBinop[unsigned& op]
+
+bvBinop[unsigned& op, CVC4::Expr& f]
 @init {
   op = LT(1)->getType(LT(1));
 }
   : CONCAT_TOK
-  | BAR // bitwise OR
-  | BVAND_TOK
+  | { f.getType().isBitVector() }?=> BAR // bitwise OR
+  | { f.getType().isBitVector() }?=> BVAND_TOK
   ;
 
 bvNegTerm[CVC4::Expr& f]
@@ -1605,6 +1644,9 @@ postfixTerm[CVC4::Expr& f]
       { if(extract) {
           /* bitvector extract */
           f = MK_EXPR(MK_CONST(BitVectorExtract(k1, k2)), f);
+        } else if(f.getType().isString()) {
+          /* string char-at */
+          f = MK_EXPR(CVC4::kind::STRING_CHARAT, f, f2);
         } else {
           /* array select */
           f = MK_EXPR(CVC4::kind::SELECT, f, f2);
@@ -1827,21 +1869,58 @@ bvTerm[CVC4::Expr& f]
     { f = MK_EXPR(CVC4::kind::BITVECTOR_IS_INTEGER, f); }
   */
 
-  | stringTerm[f]
+  | simpleStringTerm[f]
   ;
 
-stringTerm[CVC4::Expr& f]
+/** Parses regexes with binary operators @, &, and |. */
+regex[CVC4::Expr& f]
 @init {
-  Expr f2;
-  Expr f3;
-  std::string s;
-  std::vector<Expr> args;
+  std::vector<CVC4::Expr> expressions;
+  std::vector<unsigned> operators;
+  unsigned op;
+}
+  : postfixRegex[f] { expressions.push_back(f); }
+    ( regexBinop[op] postfixRegex[f] { operators.push_back(op); expressions.push_back(f); } )*
+    { f = createPrecedenceTree(PARSER_STATE, EXPR_MANAGER, expressions, operators, REGEX_MODE); }
+  ;
+
+regexBinop[unsigned& op]
+@init {
+  op = LT(1)->getType(LT(1));
+}
+  : CONCAT_TOK
+  | BAR
+  | BVAND_TOK
+  ;
+
+postfixRegex[CVC4::Expr& f]
+  : simpleRegex[f]
+    /* these syntactic predicates force a * or + following a regex to
+     * parse as part of the regex */
+    ( (STAR_TOK)=> STAR_TOK { f = MK_EXPR(CVC4::kind::REGEXP_STAR, f); }
+    | (PLUS_TOK)=> PLUS_TOK { f = MK_EXPR(CVC4::kind::REGEXP_PLUS, f); }
+    )*
+  ;
+
+simpleRegex[CVC4::Expr& f]
+@init {
+  std::string a, b;
+}
+  : STO_RE_TOK LPAREN formula[f] RPAREN
+    { f = MK_EXPR(CVC4::kind::STRING_TO_REGEXP, f); }
+  | str[a] DOTDOT str[b]
+    { f = MK_EXPR(CVC4::kind::REGEXP_RANGE, MK_CONST(String(a)), MK_CONST(String(b))); }
+  | LBRACKET regex[f] RBRACKET
+    { f = MK_EXPR(CVC4::kind::REGEXP_OPT, f); }
+  | LPAREN regex[f] RPAREN
+  ;
+
+simpleStringTerm[CVC4::Expr& f]
+@init {
+  Expr f2, f3;
 }
     /* String prefix operators */
-  : SCONCAT_TOK LPAREN formula[f] { args.push_back(f); }
-    ( COMMA formula[f2] { args.push_back(f2); } )+ RPAREN
-    { f = MK_EXPR(CVC4::kind::STRING_CONCAT, args); }
-  | SCONTAINS_TOK LPAREN formula[f] COMMA formula[f2] RPAREN
+  : SCONTAINS_TOK LPAREN formula[f] COMMA formula[f2] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_STRCTN, f, f2); }
   | SSUBSTR_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_SUBSTR, f, f2, f3); }
@@ -1853,16 +1932,10 @@ stringTerm[CVC4::Expr& f]
     { f = MK_EXPR(CVC4::kind::STRING_PREFIX, f, f2); }
   | SSUFFIXOF_TOK LPAREN formula[f] COMMA formula[f2] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_SUFFIX, f, f2); }
-  | STOINTEGER_TOK LPAREN formula[f] RPAREN
+  | STO_INTEGER_TOK LPAREN formula[f] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_STOI, f); }
-  | STOSTRING_TOK LPAREN formula[f] RPAREN
+  | STO_STRING_TOK LPAREN formula[f] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_ITOS, f); }
-  | STORE_TOK LPAREN formula[f] RPAREN
-    { f = MK_EXPR(CVC4::kind::STRING_TO_REGEXP, f); }
-
-    /* string literal */
-  | str[s]
-    { f = MK_CONST(CVC4::String(s)); }
 
   | simpleTerm[f]
   ;
@@ -1934,6 +2007,9 @@ simpleTerm[CVC4::Expr& f]
       RecordType t = EXPR_MANAGER->mkRecordType(typeIds);
       f = MK_EXPR(kind::RECORD, MK_CONST(t.getRecord()), args);
     }
+    /* string literal */
+  | str[name]
+    { f = MK_CONST(CVC4::String(name)); }
 
     /* variable / zero-ary constructor application */
   | identifier[name,CHECK_DECLARED,SYM_VARIABLE]
