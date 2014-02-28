@@ -56,6 +56,8 @@ std::string toLFSCKind(Kind kind) {
   case kind::IFF: return "iff";
   case kind::IMPLIES: return "impl";
   case kind::NOT: return "not";
+  case kind::SELECT: return "read";
+  case kind::STORE: return "write";
   default:
     Unreachable();
   }
@@ -206,6 +208,17 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
     os << paren.str();
     return;
   }
+
+  /* Arrays */
+  case kind::SELECT:
+  case kind::STORE:
+    os << "(" << toLFSCKind(k);
+    for (unsigned i = 0; i < term.getNumChildren(); ++i) {
+      os << " ";
+      printTerm(term[i], os);
+    }
+    os << ")";
+    return;
 
   default:
     Unhandled(k);

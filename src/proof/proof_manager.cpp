@@ -27,6 +27,7 @@
 #include "theory/valuation.h"
 #include "theory/uf/theory_uf.h"
 #include "theory/uf/equality_engine.h"
+#include "theory/arrays/theory_arrays.h"
 #include "context/context.h"
 
 namespace CVC4 {
@@ -138,6 +139,7 @@ class ProofOutputChannel : public theory::OutputChannel {
 public:
   Node d_conflict;
   Proof* d_proof;
+  Node d_lemma;
 
   ProofOutputChannel() : d_conflict(), d_proof(NULL) {}
 
@@ -152,8 +154,10 @@ public:
     AlwaysAssert(false);
     return false;
   }
-  theory::LemmaStatus lemma(TNode, bool) throw() {
-    AlwaysAssert(false);
+  theory::LemmaStatus lemma(TNode n, bool) throw() {
+    //AlwaysAssert(false);
+    Debug("mgd") << "new lemma: " << n << std::endl;
+    d_lemma = n;
     return theory::LemmaStatus(TNode::null(), 0);
   }
   theory::LemmaStatus splitLemma(TNode, bool) throw() {
@@ -176,13 +180,22 @@ void ProofManager::printProof(std::ostream& os, TNode n) {
   context::UserContext fakeContext;
   ProofOutputChannel oc;
   theory::Valuation v(NULL);
-  theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic, NULL);
+  //theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic);
+  theory::arrays::TheoryArrays uf(&fakeContext, &fakeContext, oc, v, d_logic);
   uf.produceProofs();
   for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
     Debug("mgd") << "asserting " << *i << std::endl;
     uf.assertFact(*i, false);
   }
   uf.check(theory::Theory::EFFORT_FULL);
+  if(oc.d_conflict.isNull()) {
+    Debug("mgd") << "conflict is null" << std::endl;
+    Assert(!oc.d_lemma.isNull());
+    Debug("mgd") << "++ but got lemma: " << oc.d_lemma << std::endl;
+    Debug("mgd") << "asserting " << oc.d_lemma[1].negate() << std::endl;
+    uf.assertFact(oc.d_lemma[1].negate(), false);
+    uf.check(theory::Theory::EFFORT_FULL);
+  }
   Debug("mgd") << "got conflict " << oc.d_conflict << std::endl
                << "and proof " << oc.d_proof << ":" << std::endl;
 Debug("mgd") << "PROOF[[" << std::endl;

@@ -89,17 +89,17 @@ TheoryArrays::TheoryArrays(context::Context* c, context::UserContext* u, OutputC
   d_lemmasSaved(c),
   d_inCheckModel(false)
 {
-  StatisticsRegistry::registerStat(&d_numRow);
-  StatisticsRegistry::registerStat(&d_numExt);
-  StatisticsRegistry::registerStat(&d_numProp);
-  StatisticsRegistry::registerStat(&d_numExplain);
-  StatisticsRegistry::registerStat(&d_numNonLinear);
-  StatisticsRegistry::registerStat(&d_numSharedArrayVarSplits);
-  StatisticsRegistry::registerStat(&d_numGetModelValSplits);
-  StatisticsRegistry::registerStat(&d_numGetModelValConflicts);
-  StatisticsRegistry::registerStat(&d_numSetModelValSplits);
-  StatisticsRegistry::registerStat(&d_numSetModelValConflicts);
-  StatisticsRegistry::registerStat(&d_checkTimer);
+  StatisticsRegistry::registerStatMultiple(&d_numRow);
+  StatisticsRegistry::registerStatMultiple(&d_numExt);
+  StatisticsRegistry::registerStatMultiple(&d_numProp);
+  StatisticsRegistry::registerStatMultiple(&d_numExplain);
+  StatisticsRegistry::registerStatMultiple(&d_numNonLinear);
+  StatisticsRegistry::registerStatMultiple(&d_numSharedArrayVarSplits);
+  StatisticsRegistry::registerStatMultiple(&d_numGetModelValSplits);
+  StatisticsRegistry::registerStatMultiple(&d_numGetModelValConflicts);
+  StatisticsRegistry::registerStatMultiple(&d_numSetModelValSplits);
+  StatisticsRegistry::registerStatMultiple(&d_numSetModelValConflicts);
+  StatisticsRegistry::registerStatMultiple(&d_checkTimer);
 
   d_true = NodeManager::currentNM()->mkConst<bool>(true);
   d_false = NodeManager::currentNM()->mkConst<bool>(false);
@@ -930,11 +930,11 @@ void TheoryArrays::check(Effort e) {
     if (!assertion.isPreregistered) {
       if (atom.getKind() == kind::EQUAL) {
         if (!d_equalityEngine.hasTerm(atom[0])) {
-          Assert(atom[0].isConst());
+          //Assert(atom[0].isConst());
           d_equalityEngine.addTerm(atom[0]);
         }
         if (!d_equalityEngine.hasTerm(atom[1])) {
-          Assert(atom[1].isConst());
+          //Assert(atom[1].isConst());
           d_equalityEngine.addTerm(atom[1]);
         }
       }

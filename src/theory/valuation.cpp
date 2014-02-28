@@ -54,10 +54,12 @@ bool equalityStatusCompatible(EqualityStatus s1, EqualityStatus s2) {
 }
 
 bool Valuation::isSatLiteral(TNode n) const {
+  Assert(d_engine != NULL);
   return d_engine->getPropEngine()->isSatLiteral(n);
 }
 
 Node Valuation::getSatValue(TNode n) const {
+  Assert(d_engine != NULL);
   if(n.getKind() == kind::NOT) {
     Node atomRes = d_engine->getPropEngine()->getValue(n[0]);
     if(atomRes.getKind() == kind::CONST_BOOLEAN) {
@@ -72,6 +74,7 @@ Node Valuation::getSatValue(TNode n) const {
 }
 
 bool Valuation::hasSatValue(TNode n, bool& value) const {
+  Assert(d_engine != NULL);
   if (d_engine->getPropEngine()->isSatLiteral(n)) {
     return d_engine->getPropEngine()->hasValue(n, value);
   } else {
@@ -80,16 +83,21 @@ bool Valuation::hasSatValue(TNode n, bool& value) const {
 }
 
 EqualityStatus Valuation::getEqualityStatus(TNode a, TNode b) {
+  Assert(d_engine != NULL);
   return d_engine->getEqualityStatus(a, b);
 }
 
 Node Valuation::getModelValue(TNode var) {
+  Assert(d_engine != NULL);
   return d_engine->getModelValue(var);
 }
 
 Node Valuation::ensureLiteral(TNode n) {
   Debug("ensureLiteral") << "rewriting: " << n << std::endl;
   Node rewritten = Rewriter::rewrite(n);
+  if(d_engine == NULL) {
+    return rewritten;
+  }
   Debug("ensureLiteral") << "      got: " << rewritten << std::endl;
   Node preprocessed = d_engine->preprocess(rewritten);
   Debug("ensureLiteral") << "preproced: " << preprocessed << std::endl;
@@ -98,10 +106,12 @@ Node Valuation::ensureLiteral(TNode n) {
 }
 
 bool Valuation::isDecision(Node lit) const {
+  Assert(d_engine != NULL);
   return d_engine->getPropEngine()->isDecision(lit);
 }
 
 unsigned Valuation::getAssertionLevel() const{
+  Assert(d_engine != NULL);
   return d_engine->getPropEngine()->getAssertionLevel();
 }
 

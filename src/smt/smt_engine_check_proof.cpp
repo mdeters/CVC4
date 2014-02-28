@@ -67,13 +67,15 @@ void SmtEngine::checkProof() {
 
   Proof* pf = getProof();
 
+<<<<<<< HEAD
   Chat() << "checking proof..." << endl;
 
   if( ! ( d_logic.isPure(theory::THEORY_BOOL) ||
+          d_logic.isPure(theory::THEORY_ARRAY) ||
           ( d_logic.isPure(theory::THEORY_UF) &&
             ! d_logic.hasCardinalityConstraints() ) ) ) {
     // no checking for these yet
-    Notice() << "Notice: no proof-checking for non-UF/Bool proofs yet" << endl;
+    Notice() << "Notice: no proof-checking for non-UF/ARRAY proofs yet" << endl;
     return;
   }
 
