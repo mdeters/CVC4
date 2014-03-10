@@ -262,24 +262,28 @@ void LFSCTheoryProof::printDeclarations(std::ostream& os, std::ostream& paren) {
     os << "(term ";
 
     Type type = term.getType();
-    if (type.isFunction()) {
+    if(type.isFunction()) {
       std::ostringstream fparen;
       FunctionType ftype = (FunctionType)type;
       std::vector<Type> args = ftype.getArgTypes();
       args.push_back(ftype.getRangeType());
       os << "(arrow";
-      for (unsigned i = 0; i < args.size(); i++) {
+      for(unsigned i = 0; i < args.size(); i++) {
         Type arg_type = args[i];
         //Assert (arg_type.isSort() || arg_type.isBoolean());
         os << " " << arg_type;
-        if (i < args.size() - 2) {
+        if(i < args.size() - 2) {
           os << " (arrow";
           fparen << ")";
         }
       }
       os << fparen.str() << "))\n";
+    } else if(type.isArray()) {
+      Assert(term.isVariable());
+      ArrayType arrtype = type;
+      os << "(array " << arrtype.getIndexType() << " " << arrtype.getConstituentType() << ")";
     } else {
-      Assert (term.isVariable());
+      Assert(term.isVariable());
       //Assert (type.isSort() || type.isBoolean());
       os << type << ")\n";
     }

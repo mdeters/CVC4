@@ -206,10 +206,10 @@ public:
   void finalizeProof(::Minisat::CRef conflict);
 
   /// clause registration methods
-  ClauseId registerClause(const ::Minisat::CRef clause, ClauseKind kind = LEARNT);
-  ClauseId registerUnitClause(const ::Minisat::Lit lit, ClauseKind kind = LEARNT);
+  ClauseId registerClause(const ::Minisat::CRef clause, ClauseKind kind, uint64_t proof_id);
+  ClauseId registerUnitClause(const ::Minisat::Lit lit, ClauseKind kind, uint64_t proof_id);
 
-  void storeUnitConflict(::Minisat::Lit lit, ClauseKind kind = LEARNT);
+  void storeUnitConflict(::Minisat::Lit lit, ClauseKind kind, uint64_t proof_id);
 
   /**
    * Marks the deleted clauses as deleted. Note we may still use them in the final

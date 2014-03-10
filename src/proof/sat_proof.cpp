@@ -360,7 +360,7 @@ void SatProof::printRes(ResChain* res) {
 
 /// registration methods
 
-ClauseId SatProof::registerClause(::Minisat::CRef clause, ClauseKind kind) {
+ClauseId SatProof::registerClause(::Minisat::CRef clause, ClauseKind kind, uint64_t proof_id) {
   Assert(clause != CRef_Undef);
   ClauseIdMap::iterator it = d_clauseId.find(clause);
   if (it == d_clauseId.end()) {
@@ -380,7 +380,7 @@ ClauseId SatProof::registerClause(::Minisat::CRef clause, ClauseKind kind) {
   return d_clauseId[clause];
 }
 
-ClauseId SatProof::registerUnitClause(::Minisat::Lit lit, ClauseKind kind) {
+ClauseId SatProof::registerUnitClause(::Minisat::Lit lit, ClauseKind kind, uint64_t proof_id) {
   UnitIdMap::iterator it = d_unitId.find(toInt(lit));
   if (it == d_unitId.end()) {
     ClauseId newId = ProofManager::currentPM()->nextId();
@@ -450,7 +450,7 @@ void SatProof::removeRedundantFromRes(ResChain* res, ClauseId id) {
       Assert(isUnit(~lit));
       reason_id = getUnitId(~lit);
     } else {
-      reason_id = registerClause(reason_ref);
+      reason_id = registerClause(reason_ref, LEARNT, uint64_t(-1));
     }
     res->addStep(lit, reason_id, !sign(lit));
   }
@@ -482,14 +482,14 @@ void SatProof::startResChain(::Minisat::CRef start) {
 }
 
 void SatProof::addResolutionStep(::Minisat::Lit lit, ::Minisat::CRef clause, bool sign) {
-  ClauseId id = registerClause(clause);
+  ClauseId id = registerClause(clause, LEARNT, uint64_t(-1));
   ResChain* res = d_resStack.back();
   res->addStep(lit, id, sign);
 }
 
 void SatProof::endResChain(CRef clause) {
   Assert(d_resStack.size() > 0);
-  ClauseId id = registerClause(clause);
+  ClauseId id = registerClause(clause, LEARNT, uint64_t(-1));
   ResChain* res = d_resStack.back();
   registerResolution(id, res);
   d_resStack.pop_back();
@@ -498,7 +498,7 @@ void SatProof::endResChain(CRef clause) {
 
 void SatProof::endResChain(::Minisat::Lit lit) {
   Assert(d_resStack.size() > 0);
-  ClauseId id = registerUnitClause(lit);
+  ClauseId id = registerUnitClause(lit, LEARNT, uint64_t(-1));
   ResChain* res = d_resStack.back();
   registerResolution(id, res);
   d_resStack.pop_back();
@@ -532,7 +532,7 @@ ClauseId SatProof::resolveUnit(::Minisat::Lit lit) {
   CRef reason_ref = d_solver->reason(var(lit));
   Assert(reason_ref != CRef_Undef);
 
-  ClauseId reason_id = registerClause(reason_ref);
+  ClauseId reason_id = registerClause(reason_ref, LEARNT, uint64_t(-1));
 
   ResChain* res = new ResChain(reason_id);
   // Here, the call to resolveUnit() can reallocate memory in the
@@ -547,7 +547,7 @@ ClauseId SatProof::resolveUnit(::Minisat::Lit lit) {
       res->addStep(l, res_id, !sign(l));
     }
   }
-  ClauseId unit_id = registerUnitClause(lit);
+  ClauseId unit_id = registerUnitClause(lit, LEARNT, uint64_t(-1));
   registerResolution(unit_id, res);
   return unit_id;
 }
@@ -557,9 +557,9 @@ void SatProof::toStream(std::ostream& out) {
   Unimplemented("native proof printing not supported yet");
 }
 
-void SatProof::storeUnitConflict(::Minisat::Lit conflict_lit, ClauseKind kind) {
+void SatProof::storeUnitConflict(::Minisat::Lit conflict_lit, ClauseKind kind, uint64_t proof_id) {
   Assert(!d_storedUnitConflict);
-  d_unitConflictId = registerUnitClause(conflict_lit, kind);
+  d_unitConflictId = registerUnitClause(conflict_lit, kind, proof_id);
   d_storedUnitConflict = true;
   Debug("proof:sat:detailed") << "storeUnitConflict " << d_unitConflictId << "\n";
 }
@@ -582,7 +582,7 @@ void SatProof::finalizeProof(::Minisat::CRef conflict_ref) {
     return;
   } else {
     Assert(!d_storedUnitConflict);
-    conflict_id = registerClause(conflict_ref); //FIXME
+    conflict_id = registerClause(conflict_ref, LEARNT, uint64_t(-1)); //FIXME
   }
 
   if(Debug.isOn("proof:sat")) {

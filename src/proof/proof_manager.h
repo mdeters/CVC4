@@ -75,6 +75,14 @@ enum ClauseKind {
   LEARNT
 };/* enum ClauseKind */
 
+enum ProofRule {
+  RULE_GIVEN,       /* input assertion */
+  RULE_DERIVED,     /* a "macro" rule */
+  RULE_RECONSTRUCT, /* prove equivalence using another method */
+  RULE_TRUST,       /* trust without evidence (escape hatch until proofs are fully supported) */
+  RULE_INVALID      /* assert-fail if this is ever needed in proof; use e.g. for split lemmas */
+};/* enum ProofRules */
+
 class ProofManager {
   SatProof*    d_satProof;
   CnfProof*    d_cnfProof;

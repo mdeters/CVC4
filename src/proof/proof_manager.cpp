@@ -154,7 +154,7 @@ public:
     AlwaysAssert(false);
     return false;
   }
-  theory::LemmaStatus lemma(TNode n, bool) throw() {
+  theory::LemmaStatus lemma(TNode n, bool, bool) throw() {
     //AlwaysAssert(false);
     Debug("mgd") << "new lemma: " << n << std::endl;
     d_lemma = n;
