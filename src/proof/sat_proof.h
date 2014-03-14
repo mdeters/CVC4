@@ -122,7 +122,6 @@ protected:
   ResStack            d_resStack;
   bool                d_checkRes;
 
-  static ClauseId     d_idCounter;
   const ClauseId      d_emptyClauseId;
   const ClauseId      d_nullId;
   // proxy class to break circular dependencies

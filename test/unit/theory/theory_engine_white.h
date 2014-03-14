@@ -49,34 +49,34 @@ using namespace CVC4::smt;
 using namespace std;
 
 class FakeOutputChannel : public OutputChannel {
-  void conflict(TNode n) throw(AssertionException) {
+  void conflict(TNode n, Proof*) throw() {
     Unimplemented();
   }
-  bool propagate(TNode n) throw(AssertionException) {
+  bool propagate(TNode n) throw() {
     Unimplemented();
   }
-  void propagateAsDecision(TNode n) throw(AssertionException) {
+  void propagateAsDecision(TNode n) throw() {
     Unimplemented();
   }
-  LemmaStatus lemma(TNode n, bool removable, bool preprocess) throw(AssertionException) {
+  LemmaStatus lemma(TNode n, bool removable, bool preprocess) throw() {
     Unimplemented();
   }
-  void requirePhase(TNode, bool) throw(AssertionException) {
+  void requirePhase(TNode, bool) throw() {
     Unimplemented();
   }
-  bool flipDecision() throw(AssertionException) {
+  bool flipDecision() throw() {
     Unimplemented();
   }
-  void explanation(TNode n) throw(AssertionException) {
+  void explanation(TNode n) throw() {
     Unimplemented();
   }
-  void setIncomplete() throw(AssertionException) {
+  void setIncomplete() throw() {
     Unimplemented();
   }
   void handleUserAttribute( const char* attr, Theory* t ){
     Unimplemented();
   }
-  LemmaStatus splitLemma(TNode n, bool removable) throw(TypeCheckingExceptionPrivate, AssertionException){
+  LemmaStatus splitLemma(TNode n, bool removable) throw(TypeCheckingExceptionPrivate) {
     Unimplemented();
   }
 };/* class FakeOutputChannel */

@@ -52,47 +52,40 @@ public:
 
   ~TestOutputChannel() {}
 
-  void safePoint() throw(Interrupted, AssertionException) {}
+  void safePoint() throw(Interrupted) {}
 
-  void conflict(TNode n)
-    throw(AssertionException) {
+  void conflict(TNode n, Proof*) throw() {
     push(CONFLICT, n);
   }
 
-  bool propagate(TNode n)
-    throw(AssertionException) {
+  bool propagate(TNode n) throw() {
     push(PROPAGATE, n);
     return true;
   }
 
-  void propagateAsDecision(TNode n)
-    throw(AssertionException) {
+  void propagateAsDecision(TNode n) throw() {
     // ignore
   }
 
-  LemmaStatus lemma(TNode n, bool removable = false, bool preprocess = false)
-    throw(AssertionException) {
+  LemmaStatus lemma(TNode n, bool removable = false, bool preprocess = false) throw() {
     push(LEMMA, n);
     return LemmaStatus(Node::null(), 0);
   }
 
-  LemmaStatus splitLemma(TNode n, bool removable) throw (TypeCheckingExceptionPrivate, AssertionException){
+  LemmaStatus splitLemma(TNode n, bool removable) throw (TypeCheckingExceptionPrivate) {
     push(LEMMA, n);
     return LemmaStatus(Node::null(), 0);
   }
 
-  void requirePhase(TNode, bool)
-    throw(Interrupted, AssertionException) {
+  void requirePhase(TNode, bool) throw(Interrupted) {
     Unreachable();
   }
 
-  bool flipDecision()
-    throw(Interrupted, AssertionException) {
+  bool flipDecision() throw(Interrupted) {
     Unreachable();
   }
 
-  void setIncomplete()
-    throw(AssertionException) {
+  void setIncomplete() throw() {
     Unreachable();
   }
 

@@ -33,7 +33,11 @@ public:
       throw TypeCheckingExceptionPrivate(n, "operator does not have function type");
     }
     if( check ) {
-      if (n.getNumChildren() != fType.getNumChildren() - 1) {
+      if (n.getKind() == kind::PARTIAL_APPLY_UF) {
+        if (n.getNumChildren() > fType.getNumChildren() - 1) {
+          throw TypeCheckingExceptionPrivate(n, "number of arguments is too large for function type");
+        }
+      } else if (n.getNumChildren() != fType.getNumChildren() - 1) {
         throw TypeCheckingExceptionPrivate(n, "number of arguments does not match the function type");
       }
       TNode::iterator argument_it = n.begin();

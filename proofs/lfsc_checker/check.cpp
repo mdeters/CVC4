@@ -9,6 +9,7 @@
 #include <libgen.h>
 #endif
 #include <stack>
+#include <sstream>
 #include <string.h>
 #include <time.h>
 #include "scccode.h"
@@ -46,20 +47,30 @@ Expr *not_defeq2 = 0;
 bool tail_calls = true;
 bool big_check = true;
 
-void report_error(const string &msg) {
+void default_report_error(const string &msg);
+
+void (*report_error)(const string &msg) = default_report_error;
+
+string default_report_error_info(const string &msg) {
+  stringstream stm;
   if (filename) {
     Position p(filename,linenum,colnum);
-    p.print(cout);
+    p.print(stm);
   }
-  cout << "\n";
-  cout << msg;
-  cout << "\n";
+  stm << "\n";
+  stm << msg;
+  stm << "\n";
   if (not_defeq1 && not_defeq2) {
-    cout << "The following terms are not definitionally equal:\n1. ";
-    not_defeq1->print(cout);
-    cout << "\n2. ";
-    not_defeq2->print(cout);
+    stm << "The following terms are not definitionally equal:\n1. ";
+    not_defeq1->print(stm);
+    stm << "\n2. ";
+    not_defeq2->print(stm);
   }
+  return stm.str();
+}
+
+void default_report_error(const string &msg) {
+  cout << default_report_error_info(msg);
   cout.flush();
   exit(1);
 }

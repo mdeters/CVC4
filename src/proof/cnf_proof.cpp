@@ -30,6 +30,8 @@ CnfProof::CnfProof(CnfStream* stream)
   : d_cnfStream(stream)
 {}
 
+CnfProof::~CnfProof() {
+}
 
 Expr CnfProof::getAtom(prop::SatVariable var) {
   prop::SatLiteral lit (var);
@@ -38,7 +40,8 @@ Expr CnfProof::getAtom(prop::SatVariable var) {
   return atom;
 }
 
-CnfProof::~CnfProof() {
+prop::SatLiteral CnfProof::getLiteral(TNode atom) {
+  return d_cnfStream->getLiteral(atom);
 }
 
 LFSCCnfProof::iterator LFSCCnfProof::begin_atom_mapping() {
@@ -56,7 +59,8 @@ void LFSCCnfProof::printAtomMapping(std::ostream& os, std::ostream& paren) {
   for (;it != end;  ++it) {
     os << "(decl_atom ";
 
-    if (ProofManager::currentPM()->getLogic().compare("QF_UF") == 0) {
+    if (ProofManager::currentPM()->getLogic().compare("QF_UF") == 0 ||
+        ProofManager::currentPM()->getLogic().compare("QF_SAT") == 0) {
       Expr atom = getAtom(*it);
       LFSCTheoryProof::printTerm(atom, os);
     } else {
@@ -85,26 +89,43 @@ void LFSCCnfProof::printInputClauses(std::ostream& os, std::ostream& paren) {
     os << "(satlem _ _ ";
     std::ostringstream clause_paren;
     printClause(*clause, os, clause_paren);
-    os << " (clausify_false trust)" << clause_paren.str();
-    os << "( \\ " << ProofManager::getInputClauseName(id) << "\n";
+    os << "(clausify_false trust)" << clause_paren.str()
+       << " (\\ " << ProofManager::getInputClauseName(id) << "\n";
     paren << "))";
   }
 }
-
 
 void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
   os << " ;; Theory Lemmas \n";
   ProofManager::clause_iterator it = ProofManager::currentPM()->begin_lemmas();
   ProofManager::clause_iterator end = ProofManager::currentPM()->end_lemmas();
 
-  for (; it != end; ++it) {
+  for(size_t n = 0; it != end; ++it, ++n) {
+    if(n % 100 == 0) {
+      Chat() << "proving theory lemmas...(" << n << "/" << ProofManager::currentPM()->num_lemmas() << ")" << std::endl;
+    }
+
     ClauseId id = it->first;
     const prop::SatClause* clause = it->second;
     os << "(satlem _ _ ";
     std::ostringstream clause_paren;
     printClause(*clause, os, clause_paren);
-    os << " (clausify_false trust)" << clause_paren.str();
-    os << "( \\ " << ProofManager::getLemmaClauseName(id) <<"\n";
+
+    NodeBuilder<> c(kind::AND);
+    for(unsigned i = 0; i < clause->size(); ++i) {
+      prop::SatLiteral lit = (*clause)[i];
+      prop::SatVariable var = lit.getSatVariable();
+      if(lit.isNegated()) {
+        c << Node::fromExpr(getAtom(var));
+      } else {
+        c << Node::fromExpr(getAtom(var)).notNode();
+      }
+    }
+    Node cl = c;
+    //os << "\n;; need a proof of " << cl << "\n";
+    ProofManager::currentPM()->printProof(os, cl);
+    os << clause_paren.str()
+       << " (\\ " << ProofManager::getLemmaClauseName(id) << "\n";
     paren << "))";
   }
 }
@@ -114,10 +135,10 @@ void LFSCCnfProof::printClause(const prop::SatClause& clause, std::ostream& os, 
     prop::SatLiteral lit = clause[i];
     prop::SatVariable var = lit.getSatVariable();
     if (lit.isNegated()) {
-      os << "(ast _ _ _ " << ProofManager::getAtomName(var) <<" (\\ " << ProofManager::getLitName(lit) << " ";
+      os << "(ast _ _ _ " << ProofManager::getAtomName(var) << " (\\ " << ProofManager::getLitName(lit) << " ";
       paren << "))";
     } else {
-      os << "(asf _ _ _ " << ProofManager::getAtomName(var) <<" (\\ " << ProofManager::getLitName(lit) << " ";
+      os << "(asf _ _ _ " << ProofManager::getAtomName(var) << " (\\ " << ProofManager::getLitName(lit) << " ";
       paren << "))";
     }
   }

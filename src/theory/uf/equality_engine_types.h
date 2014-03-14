@@ -74,7 +74,7 @@ enum MergeReasonType {
   /** Theory specific proof rules */
   MERGED_ARRAYS_ROW,
   MERGED_ARRAYS_ROW1,
-};
+};/* enum MergeReasonType */
 
 inline std::ostream& operator << (std::ostream& out, MergeReasonType reason) {
   switch (reason) {
@@ -112,7 +112,7 @@ struct MergeCandidate {
   MergeCandidate(EqualityNodeId x, EqualityNodeId y, MergeReasonType type, TNode reason)
   : t1Id(x), t2Id(y), type(type), reason(reason)
   {}
-};
+};/* struct MergeCandidate */
 
 /**
  * Just an index into the reasons array, and the number of merges to consume.
@@ -122,7 +122,7 @@ struct DisequalityReasonRef {
   DefaultSizeType mergesEnd;
   DisequalityReasonRef(DefaultSizeType mergesStart = 0, DefaultSizeType mergesEnd = 0)
   : mergesStart(mergesStart), mergesEnd(mergesEnd) {}
-};
+};/* struct DisequalityReasonRef */
 
 /**
  * We maintain uselist where a node appears in, and this is the node
@@ -159,7 +159,7 @@ public:
   EqualityNodeId getApplicationId() const {
     return d_applicationId;
   }
-};
+};/* class UseListNode */
 
 /**
  * Main class for representing nodes in the equivalence class. The
@@ -262,7 +262,7 @@ public:
     d_useList = memory.back().getNext();
     memory.pop_back();
   }
-};
+};/* class EqualityNode */
 
 /** A pair of ids */
 typedef std::pair<EqualityNodeId, EqualityNodeId> EqualityPair;
@@ -274,7 +274,7 @@ struct EqualityPairHashFunction {
     hash ^= 0x9e3779b9 + pair.second + (hash << 6) + (hash >> 2);
     return hash;
   }
-};
+};/* struct EqualityPairHashFunction */
 
 enum FunctionApplicationType {
   /** This application is an equality a = b */
@@ -283,7 +283,7 @@ enum FunctionApplicationType {
   APP_UNINTERPRETED,
   /** This is a part of an interpreted application f(t1, ..., tn) */
   APP_INTERPRETED
-};
+};/* enum FunctionApplicationType */
 
 /**
  * Represents the function APPLY a b. If isEquality is true then it
@@ -320,8 +320,7 @@ struct FunctionApplication {
   bool isInterpreted() const {
     return type == APP_INTERPRETED;
   }
-
-};
+};/* struct FunctionApplication */
 
 struct FunctionApplicationHashFunction {
   size_t operator () (const FunctionApplication& app) const {
@@ -330,7 +329,7 @@ struct FunctionApplicationHashFunction {
     hash ^= 0x9e3779b9 + app.b + (hash << 6) + (hash >> 2);
     return hash;
   }
-};
+};/* struct FunctionApplicationHashFunction */
 
 /**
  * At time of addition a function application can already normalize to something, so
@@ -345,7 +344,7 @@ struct FunctionApplicationPair {
   bool isNull() const {
     return original.isNull();
   }
-};
+};/* struct FunctionApplicationPair */
 
 /**
  * Information about the added triggers.
@@ -358,10 +357,8 @@ struct TriggerInfo {
   TriggerInfo() {}
   TriggerInfo(Node trigger, bool polarity)
   : trigger(trigger), polarity(polarity) {}
-  };
+};/* struct TriggerInfo */
 
-
-} // namespace eq
-} // namespace theory
-} // namespace CVC4
-
+}/* CVC4::theory::eq namespace */
+}/* CVC4::theory namespace */
+}/* CVC4 namespace */

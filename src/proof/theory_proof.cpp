@@ -61,12 +61,37 @@ std::string toLFSCKind(Kind kind) {
   }
 }
 
+// sanitize identifiers for LFSC
+inline static void sanitize(std::string& name) {
+  Assert(name.size() > 0);
+  if(name[0] == '_') {
+    // sanitize the name
+    name = "lfsc" + name;
+  }
+}
+inline static std::string sanitize(Expr v) {
+  Assert(v.isVariable());
+  std::stringstream ss;
+  ss << v;
+  std::string name = ss.str();
+  sanitize(name);
+  return name;
+}
+inline static std::string sanitize(Type s) {
+  Assert(s.isSort());
+  std::stringstream ss;
+  ss << s;
+  std::string name = ss.str();
+  sanitize(name);
+  return name;
+}
+
 void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
   if (term.isVariable()) {
     if(term.getType().isBoolean()) {
-      os << "(p_app " << term << ")";
+      os << "(p_app " << sanitize(term) << ")";
     } else {
-      os << term;
+      os << sanitize(term);
     }
     return;
   }
@@ -84,6 +109,9 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
     for (unsigned i = 0; i < term.getNumChildren(); ++i) {
       printTerm(term[i], os);
       os << ")";
+      if(i + 1 < term.getNumChildren()) {
+        os << " ";
+      }
     }
     if(term.getType().isBoolean()) {
       os << ")";
@@ -132,12 +160,11 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
       // LFSC doesn't allow declarations with variable numbers of
       // arguments, so we have to flatten these N-ary versions.
       std::ostringstream paren;
-      os << " ";
       for (unsigned i = 0; i < term.getNumChildren(); ++i) {
-        printTerm(term[i], os);
         os << " ";
+        printTerm(term[i], os);
         if(i < term.getNumChildren() - 2) {
-          os << "(" << toLFSCKind(k) << " ";
+          os << " (" << toLFSCKind(k);
           paren << ")";
         }
       }
@@ -210,7 +237,7 @@ void LFSCTheoryProof::printAssertions(std::ostream& os, std::ostream& paren) {
 void LFSCTheoryProof::printDeclarations(std::ostream& os, std::ostream& paren) {
   // declaring the sorts
   for (SortSet::const_iterator it = d_sortDeclarations.begin(); it != d_sortDeclarations.end(); ++it) {
-    os << "(% " << *it << " sort\n";
+    os << "(% " << sanitize(*it) << " sort\n";
     paren << ")";
   }
 
@@ -218,7 +245,7 @@ void LFSCTheoryProof::printDeclarations(std::ostream& os, std::ostream& paren) {
   for (ExprSet::const_iterator it = d_termDeclarations.begin(); it != d_termDeclarations.end(); ++it) {
     Expr term = *it;
 
-    os << "(% " << term << " ";
+    os << "(% " << sanitize(term) << " ";
     os << "(term ";
 
     Type type = term.getType();

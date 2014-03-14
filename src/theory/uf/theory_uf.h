@@ -136,7 +136,11 @@ private:
   /**
    * Explain why this literal is true by adding assumptions
    */
-  void explain(TNode literal, std::vector<TNode>& assumptions);
+  void explain(TNode literal, std::vector<TNode>& assumptions, eq::EqProof* pf = NULL);
+  /**
+   * Explain a literal, with proof (if "pf" is non-NULL).
+   */
+  Node explain(TNode literal, eq::EqProof* pf);
 
   /** Literals to propagate */
   context::CDList<Node> d_literalsToPropagate;

@@ -22,7 +22,8 @@
 #include <iostream>
 #include "proof/proof.h"
 #include "util/proof.h"
-
+#include "expr/node.h"
+#include "theory/logic_info.h"
 
 // forward declarations
 namespace Minisat {
@@ -88,8 +89,10 @@ class ProofManager {
   Proof* d_fullProof;
   ProofFormat d_format; // used for now only in debug builds
 
+  int d_nextId;
+
 protected:
-  std::string d_logic;
+  LogicInfo d_logic;
 
 public:
   ProofManager(ProofFormat format = LFSC);
@@ -114,18 +117,26 @@ public:
 
   clause_iterator begin_input_clauses() const { return d_inputClauses.begin(); }
   clause_iterator end_input_clauses() const { return d_inputClauses.end(); }
+  size_t num_input_clauses() const { return d_inputClauses.size(); }
 
   clause_iterator begin_lemmas() const { return d_theoryLemmas.begin(); }
   clause_iterator end_lemmas() const { return d_theoryLemmas.end(); }
+  size_t num_lemmas() const { return d_theoryLemmas.size(); }
 
   assertions_iterator begin_assertions() const { return d_inputFormulas.begin(); }
   assertions_iterator end_assertions() const { return d_inputFormulas.end(); }
+  size_t num_assertions() const { return d_inputFormulas.size(); }
 
   var_iterator begin_vars() const { return d_propVars.begin(); }
   var_iterator end_vars() const { return d_propVars.end(); }
+  size_t num_vars() const { return d_propVars.size(); }
+
+  void printProof(std::ostream& os, TNode n);
 
   void addAssertion(Expr formula);
   void addClause(ClauseId id, const prop::SatClause* clause, ClauseKind kind);
+
+  int nextId() { return d_nextId++; }
 
   // variable prefixes
   static std::string getInputClauseName(ClauseId id);
@@ -134,10 +145,13 @@ public:
 
   static std::string getVarName(prop::SatVariable var);
   static std::string getAtomName(prop::SatVariable var);
+  static std::string getAtomName(TNode atom);
   static std::string getLitName(prop::SatLiteral lit);
+  static std::string getLitName(TNode lit);
 
-  void setLogic(const std::string& logic_string);
-  const std::string getLogic() const { return d_logic; }
+  void setLogic(const LogicInfo& logic);
+  const std::string getLogic() const { return d_logic.getLogicString(); }
+
 };/* class ProofManager */
 
 class LFSCProof : public Proof {

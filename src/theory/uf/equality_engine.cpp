@@ -16,10 +16,17 @@
  **/
 
 #include "theory/uf/equality_engine.h"
+#include "proof/proof_manager.h"
+#include "proof/theory_proof.h"
+#include <stack>
 
 namespace CVC4 {
 namespace theory {
 namespace eq {
+
+static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned tb);
+inline static bool match(TNode n1, TNode n2);
+inline static Node eqNode(TNode n1, TNode n2);
 
 /**
  * Data used in the BFS search through the equality graph.
@@ -892,7 +899,7 @@ std::string EqualityEngine::edgesToString(EqualityEdgeId edgeId) const {
   return out.str();
 }
 
-void EqualityEngine::explainEquality(TNode t1, TNode t2, bool polarity, std::vector<TNode>& equalities, EqProof * eqp) const {
+void EqualityEngine::explainEquality(TNode t1, TNode t2, bool polarity, std::vector<TNode>& equalities, EqProof* eqp) const {
   Debug("equality") << d_name << "::eq::explainEquality(" << t1 << ", " << t2 << ", " << (polarity ? "true" : "false") << ")" << std::endl;
 
   // The terms must be there already
@@ -917,7 +924,7 @@ void EqualityEngine::explainEquality(TNode t1, TNode t2, bool polarity, std::vec
   }
 }
 
-void EqualityEngine::explainPredicate(TNode p, bool polarity, std::vector<TNode>& assertions, EqProof * eqp) const {
+void EqualityEngine::explainPredicate(TNode p, bool polarity, std::vector<TNode>& assertions, EqProof* eqp) const {
   Debug("equality") << d_name << "::eq::explainPredicate(" << p << ")" << std::endl;
   // Must have the term
   Assert(hasTerm(p));
@@ -925,7 +932,17 @@ void EqualityEngine::explainPredicate(TNode p, bool polarity, std::vector<TNode>
   getExplanation(getNodeId(p), polarity ? d_trueId : d_falseId, assertions, eqp);
 }
 
-void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, std::vector<TNode>& equalities, EqProof * eqp) const {
+static bool isReflexivity(EqProof* pf) {
+  if(pf->d_id == MERGED_THROUGH_REFLEXIVITY) {
+    return true;
+  }
+  if(pf->d_id == MERGED_THROUGH_CONGRUENCE) {
+    return isReflexivity(pf->d_children[0]) && isReflexivity(pf->d_children[1]);
+  }
+  return false;
+}
+
+void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, std::vector<TNode>& equalities, EqProof* eqp) const {
 
   Debug("equality") << d_name << "::eq::getExplanation(" << d_nodes[t1Id] << "," << d_nodes[t2Id] << ")" << std::endl;
 
@@ -944,7 +961,7 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
 
   // If the nodes are the same, we're done
   if (t1Id == t2Id){
-    if( eqp ) {
+    if(eqp) {
       eqp->d_node = d_nodes[t1Id];
     }
     return;
@@ -992,7 +1009,7 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
 
           Debug("equality") << d_name << "::eq::getExplanation(): path found: " << std::endl;
 
-          std::vector< EqProof * > eqp_trans;
+          std::vector<EqProof*> eqp_trans;
 
           // Reconstruct the path
           do {
@@ -1003,10 +1020,10 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
 
             Debug("equality") << d_name << "::eq::getExplanation(): currentEdge = " << currentEdge << ", currentNode = " << currentNode << std::endl;
 
-            EqProof * eqpc = NULL;
-            //make child proof if a proof is being constructed
-            if( eqp ){
-              eqpc = new EqProof;
+            EqProof *eqpc = NULL;
+            if(eqp) {
+              // make child proof if a proof is being constructed
+              eqpc = new EqProof();
               eqpc->d_id = reasonType;
             }
             // Add the actual equality to the vector
@@ -1017,13 +1034,18 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
               const FunctionApplication& f1 = d_applications[currentNode].original;
               const FunctionApplication& f2 = d_applications[edgeNode].original;
               Debug("equality") << push;
-              EqProof * eqpc1 = eqpc ? new EqProof : NULL;
+              EqProof *eqpc1 = eqpc ? new EqProof() : NULL;
               getExplanation(f1.a, f2.a, equalities, eqpc1);
-              EqProof * eqpc2 = eqpc ? new EqProof : NULL;
+              EqProof *eqpc2 = eqpc ? new EqProof() : NULL;
               getExplanation(f1.b, f2.b, equalities, eqpc2);
-              if( eqpc ){
+              if(eqpc) {
                 eqpc->d_children.push_back( eqpc1 );
                 eqpc->d_children.push_back( eqpc2 );
+                if(d_nodes[f1.a].getKind() == kind::APPLY_UF) {
+                  eqpc->d_node = d_nodes[f1.a];
+                } else {
+                  eqpc->d_node = NodeManager::currentNM()->mkNode(kind::PARTIAL_APPLY_UF, d_nodes[f1.a], d_nodes[f1.b]);
+                }
               }
               Debug("equality") << pop;
               break;
@@ -1037,9 +1059,9 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
 
               // Explain why a = b constant
               Debug("equality") << push;
-              EqProof * eqpc1 = eqpc ? new EqProof : NULL;
+              EqProof *eqpc1 = eqpc ? new EqProof() : NULL;
               getExplanation(eq.a, eq.b, equalities, eqpc1);
-              if( eqpc ){
+              if(eqpc) {
                 eqpc->d_children.push_back( eqpc1 );
               }
               Debug("equality") << pop;
@@ -1061,9 +1083,9 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
               for (unsigned i = 0; i < interpreted.getNumChildren(); ++ i) {
                 EqualityNodeId childId = getNodeId(interpreted[i]);
                 Assert(isConstant(childId));
-                EqProof * eqpcc = eqpc ? new EqProof : NULL;
+                EqProof *eqpcc = eqpc ? new EqProof() : NULL;
                 getExplanation(childId, getEqualityNode(childId).getFind(), equalities, eqpcc);
-                if( eqpc ) {
+                if(eqpc) {
                   eqpc->d_children.push_back( eqpcc );
                 }
               }
@@ -1075,14 +1097,15 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
             default: {
               // Construct the equality
               Debug("equality") << d_name << "::eq::getExplanation(): adding: " << d_equalityEdges[currentEdge].getReason() << std::endl;
-              if( eqpc ){
-                if( reasonType==MERGED_THROUGH_EQUALITY ){
+              if(eqpc) {
+                if(reasonType == MERGED_THROUGH_EQUALITY) {
                   eqpc->d_node = d_equalityEdges[currentEdge].getReason();
-                }else{
-                  //theory-specific proof rule : TODO
+                } else {
+                  // theory-specific proof rule : TODO
                   eqpc->d_id = reasonType;
                   //eqpc->d_node = d_equalityEdges[currentEdge].getNodeId();
                 }
+                eqpc->d_node = d_equalityEdges[currentEdge].getReason();
               }
               equalities.push_back(d_equalityEdges[currentEdge].getReason());
               break;
@@ -1093,13 +1116,37 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
             currentEdge = bfsQueue[currentIndex].edgeId;
             currentIndex = bfsQueue[currentIndex].previousIndex;
 
-            eqp_trans.push_back( eqpc );
+            if(eqpc != NULL && eqpc->d_id == MERGED_THROUGH_REFLEXIVITY) {
+              if(eqpc->d_node.isNull()) {
+                Assert(eqpc->d_children.size() == 1);
+                EqProof *p = eqpc;
+                eqpc = p->d_children[0];
+                delete p;
+              } else {
+                Assert(eqpc->d_children.empty());
+              }
+            }
+
+            eqp_trans.push_back(eqpc);
 
           } while (currentEdge != null_id);
 
-          if( eqp ){
-            eqp->d_id = MERGED_THROUGH_TRANS;
-            eqp->d_children.insert( eqp->d_children.end(), eqp_trans.begin(), eqp_trans.end() );
+          if(eqp) {
+            if(eqp_trans.size() > 1) {
+              for(size_t i = 0; i < eqp_trans.size(); ++i) {
+                if(isReflexivity(eqp_trans[i])) {
+                  eqp_trans.erase(eqp_trans.begin() + i);
+                }
+              }
+            }
+            if(eqp_trans.size() == 1) {
+              *eqp = *eqp_trans[0];
+              delete eqp_trans[0];
+            } else {
+              eqp->d_id = MERGED_THROUGH_TRANS;
+              eqp->d_children.insert( eqp->d_children.end(), eqp_trans.begin(), eqp_trans.end() );
+              eqp->d_node = eqNode(d_nodes[t1Id], d_nodes[t2Id]);
+            }
           }
 
           // Done
@@ -2023,27 +2070,292 @@ bool EqClassIterator::isFinished() const {
   return d_current == null_id;
 }
 
-
-void EqProof::debug_print( const char * c, unsigned tb ){
-  for( unsigned i=0; i<tb; i++ ) { Debug( c ) << "  "; }
-  Debug( c ) << d_id << "(";
-  if( !d_children.empty() || !d_node.isNull() ){
-    if( !d_node.isNull() ){
-      Debug( c ) << std::endl;
-      for( unsigned i=0; i<tb+1; i++ ) { Debug( c ) << "  "; }
-      Debug( c ) << d_node;
+// for printing EqProofs
+static void toStreamRec(std::ostream& out, const eq::EqProof* pf, unsigned tb) {
+  for(unsigned i = 0; i < tb; ++i) {
+    out << "  ";
+  }
+  out << pf->d_id << "(";
+  if(!pf->d_children.empty() || !pf->d_node.isNull()) {
+    if(!pf->d_node.isNull()) {
+      out << std::endl;
+      for(unsigned i = 0; i < tb + 1; ++i) {
+        out << "  ";
+      }
+      out << pf->d_node;
     }
-    for( unsigned i=0; i<d_children.size(); i++ ){
-      if( i>0 || !d_node.isNull() ) Debug( c ) << ",";
-      Debug( c ) << std::endl;
-      d_children[i]->debug_print( c, tb+1 );
+    for(unsigned i = 0; i < pf->d_children.size(); ++i) {
+      if(i > 0 || !pf->d_node.isNull()) {
+        out << ",";
+      }
+      out << std::endl;
+      toStreamRec(out, pf->d_children[i], tb + 1);
     }
   }
-  Debug( c ) << ")";
+  out << ")";
 }
 
+inline static Node eqNode(TNode n1, TNode n2) {
+  return NodeManager::currentNM()->mkNode(n1.getType().isBoolean() ? kind::IFF : kind::EQUAL, n1, n2);
+}
 
-} // Namespace uf
-} // Namespace theory
-} // Namespace CVC4
+// congrence matching term helper
+inline static bool match(TNode n1, TNode n2) {
+  if(n1.getKind() != kind::PARTIAL_APPLY_UF && n1.getKind() != kind::APPLY_UF) {
+    return n1 == n2.getOperator();
+  }
+  if(n2.getKind() != kind::PARTIAL_APPLY_UF && n2.getKind() != kind::APPLY_UF) {
+    return n2 == n1.getOperator();
+  }
 
+  if(n1.getOperator() != n2.getOperator()) {
+    return false;
+  }
+
+  for(size_t i = 0; i < n1.getNumChildren() && i < n2.getNumChildren(); ++i) {
+    if(n1[i] != n2[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned tb) {
+  if(tb == 0) {
+    Assert(pf->d_id == MERGED_THROUGH_TRANS);
+    Assert(!pf->d_node.isNull());
+    Assert(pf->d_children.size() >= 2);
+
+    int neg = -1;
+    EqProof subTrans;
+    subTrans.d_id = MERGED_THROUGH_TRANS;
+    subTrans.d_node = pf->d_node;
+    for(size_t i = 0; i < pf->d_children.size(); ++i) {
+      if(!pf->d_children[i]->d_node.isNull() && pf->d_children[i]->d_node.getKind() == kind::NOT) {
+        Assert(neg < 0);
+        neg = i;
+      } else {
+        subTrans.d_children.push_back(pf->d_children[i]);
+      }
+    }
+    Assert(neg >= 0);
+
+    Node n1;
+    std::stringstream ss;
+    Assert(subTrans.d_children.size() == pf->d_children.size() - 1);
+    if(pf->d_children.size() > 2) {
+      n1 = toStreamRecLFSC(ss, &subTrans, 1);
+    } else {
+      n1 = toStreamRecLFSC(ss, subTrans.d_children[0], 1);
+    }
+
+    Node n2 = pf->d_children[neg]->d_node;
+    Assert(n2.getKind() == kind::NOT);
+    out << "(clausify_false (contra _ ";
+    if(n2[0].getKind() == kind::APPLY_UF) {
+      out << "(trans _ _ _ _ ";
+      out << "(symm _ _ _ ";
+      out << ss.str();
+      out << ") (pred_eq_f _ " << ProofManager::getLitName(n2[0]) << ")) t_t_neq_f))" << std::endl;
+    } else {
+      Assert((n1[0] == n2[0][0] && n1[1] == n2[0][1]) ||
+             (n1[1] == n2[0][0] && n1[0] == n2[0][1]));
+      if(n1[1] == n2[0][0]) {
+        out << "(symm _ _ _ " << ss.str() << ")";
+      } else {
+        out << ss.str();
+      }
+      out << " " << ProofManager::getLitName(n2[0]) << "))" << std::endl;
+    }
+    return Node();
+  }
+
+  switch(pf->d_id) {
+  case MERGED_THROUGH_CONGRUENCE: {
+    std::stack<const EqProof*> stk;
+    for(const EqProof* pf2 = pf; pf2->d_id == MERGED_THROUGH_CONGRUENCE; pf2 = pf2->d_children[0]) {
+      Assert(!pf2->d_node.isNull());
+      Assert(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF || pf2->d_node.getKind() == kind::APPLY_UF);
+      Assert(pf2->d_children.size() == 2);
+      out << "(cong _ _ _ _ _ _ ";
+      stk.push(pf2);
+    }
+    Assert(stk.top()->d_children[0]->d_id != MERGED_THROUGH_CONGRUENCE);
+    NodeBuilder<> b1(kind::PARTIAL_APPLY_UF), b2(kind::PARTIAL_APPLY_UF);
+    const EqProof* pf2 = stk.top();
+    stk.pop();
+    Assert(pf2->d_id == MERGED_THROUGH_CONGRUENCE);
+    Node n1 = toStreamRecLFSC(out, pf2->d_children[0], tb + 1);
+    out << " ";
+    std::stringstream ss;
+    Node n2 = toStreamRecLFSC(ss, pf2->d_children[1], tb + 1);
+    int side = 0;
+    if(match(pf2->d_node, n1[0])) {
+      side = 0;
+    } else {
+      Assert(match(pf2->d_node, n1[1]));
+      side = 1;
+    }
+    if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF) {
+      b1 << n1[side].getOperator();
+      b1.append(n1[side].begin(), n1[side].end());
+    } else {
+      b1 << n1[side];
+    }
+    if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF) {
+      b2 << n1[1-side].getOperator();
+      b2.append(n1[1-side].begin(), n1[1-side].end());
+    } else {
+      b2 << n1[1-side];
+    }
+    if(pf2->d_node[b1.getNumChildren()] == n2[side]) {
+      b1 << n2[side];
+      b2 << n2[1-side];
+      out << ss.str();
+    } else {
+      Assert(pf2->d_node[b1.getNumChildren()] == n2[1-side]);
+      b1 << n2[1-side];
+      b2 << n2[side];
+      out << "(symm _ _ _ " << ss.str() << ")";
+    }
+    out << ")";
+    while(!stk.empty()) {
+      pf2 = stk.top();
+      stk.pop();
+      Assert(pf2->d_id == MERGED_THROUGH_CONGRUENCE);
+      out << " ";
+      ss.str("");
+      n2 = toStreamRecLFSC(ss, pf2->d_children[1], tb + 1);
+      if(pf2->d_node[b1.getNumChildren()] == n2[side]) {
+        b1 << n2[side];
+        b2 << n2[1-side];
+        out << ss.str();
+      } else {
+        Assert(pf2->d_node[b1.getNumChildren()] == n2[1-side]);
+        b1 << n2[1-side];
+        b2 << n2[side];
+        out << "(symm _ _ _ " << ss.str() << ")";
+      }
+      out << ")";
+    }
+    n1 = b1;
+    n2 = b2;
+    if(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF) {
+      Assert(n1 == pf2->d_node);
+    }
+    if(n1.getOperator().getType().getNumChildren() == n1.getNumChildren() + 1) {
+      b1.clear(kind::APPLY_UF);
+      b1 << n1.getOperator();
+      b1.append(n1.begin(), n1.end());
+      n1 = b1;
+      if(pf2->d_node.getKind() == kind::APPLY_UF) {
+        Assert(n1 == pf2->d_node);
+      }
+    }
+    if(n2.getOperator().getType().getNumChildren() == n2.getNumChildren() + 1) {
+      b2.clear(kind::APPLY_UF);
+      b2 << n2.getOperator();
+      b2.append(n2.begin(), n2.end());
+      n2 = b2;
+    }
+    Node n = (side == 0 ? eqNode(n1, n2) : eqNode(n2, n1));
+    return n;
+  }
+
+  case MERGED_THROUGH_REFLEXIVITY:
+    Assert(!pf->d_node.isNull());
+    Assert(pf->d_children.empty());
+    out << "(refl _ ";
+    LFSCTheoryProof::printTerm(NodeManager::currentNM()->toExpr(pf->d_node), out);
+    out << ")";
+    return eqNode(pf->d_node, pf->d_node);
+
+  case MERGED_THROUGH_EQUALITY:
+    Assert(!pf->d_node.isNull());
+    Assert(pf->d_children.empty());
+    out << ProofManager::getLitName(pf->d_node.negate());
+    return pf->d_node;
+
+  case MERGED_THROUGH_TRANS: {
+    Assert(!pf->d_node.isNull());
+    Assert(pf->d_children.size() >= 2);
+    std::stringstream ss;
+    Node n1 = toStreamRecLFSC(ss, pf->d_children[0], tb + 1);
+    for(size_t i = 1; i < pf->d_children.size(); ++i) {
+      std::stringstream ss1(ss.str()), ss2;
+      ss.str("");
+      Node n2 = toStreamRecLFSC(ss2, pf->d_children[i], tb + 1);
+      ss << "(trans _ _ _ _ ";
+      if(n2.getKind() == kind::EQUAL || n2.getKind() == kind::IFF) {
+        if(n1[0] == n2[0]) {
+          if(n1[1] == n2[1] && match(n1[0], pf->d_node[0])) {
+            if(match(n1[1], pf->d_node[1])) {
+              //Warning() << "TRICKY CASE 1!\n";
+              ss.str(ss1.str());
+              break;
+            }
+            //ambiguity -- could replace with refl
+            n1 = eqNode(n1[0], n2[0]);
+            ss << ss1.str() << " (symm _ _ _ " << ss2.str() << ")";
+          } else {
+            n1 = eqNode(n1[1], n2[1]);
+            ss << "(symm _ _ _ " << ss1.str() << ") " << ss2.str();
+          }
+        } else if(n1[1] == n2[1]) {
+          n1 = eqNode(n1[0], n2[0]);
+          ss << ss1.str() << " (symm _ _ _ " << ss2.str() << ")";
+        } else if(n1[0] == n2[1]) {
+          if(n1[1] == n2[0] && match(n1[0], pf->d_node[0])) {
+            if(match(n1[1], pf->d_node[1])) {
+              //Warning() << "TRICKY CASE 2!\n";
+              ss.str(ss1.str());
+              break;
+            }
+            //ambiguity -- could replace with refl
+            n1 = eqNode(n1[0], n2[1]);
+            ss << ss1.str() << " " << ss2.str();
+        } else {
+          n1 = eqNode(n2[0], n1[1]);
+          ss << ss2.str() << " " << ss1.str();
+        } else if(n1[1] == n2[0]) {
+          n1 = eqNode(n1[0], n2[1]);
+          ss << ss1.str() << " " << ss2.str();
+        } else {
+          Unreachable();
+        }
+      } else {
+        if(n1[0] == n2) {
+          n1 = n1[1];
+          ss << "(symm _ _ _ " << ss1.str() << ") (pred_eq_t _ " << ss2.str() << ")";
+        } else if(n1[1] == n2) {
+          n1 = n1[0];
+          ss << ss1.str() << " (pred_eq_t _ " << ss2.str() << ")";
+        } else {
+          Unreachable();
+        }
+      }
+      ss << ")";
+    }
+    out << ss.str();
+    return n1;
+  }
+
+  default:
+    Unhandled(pf->d_id);
+  }
+}
+
+void EqProof::toStream(std::ostream& out) {
+  toStreamRecLFSC(out, this, 0);
+}
+
+void EqProof::debug_print(const char* c) const {
+  if(Debug.isOn(c)) {
+    toStreamRec(Debug.getStream(), this, 0);
+  }
+}
+
+}/* CVC4::theory::uf namespace */
+}/* CVC4::theory namespace */
+}/* CVC4 namespace */

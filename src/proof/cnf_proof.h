@@ -52,10 +52,12 @@ public:
 class CnfProof {
 protected:
   CVC4::prop::CnfStream* d_cnfStream;
-  Expr getAtom(prop::SatVariable var);
   friend class AtomIterator;
 public:
   CnfProof(CVC4::prop::CnfStream* cnfStream);
+
+  Expr getAtom(prop::SatVariable var);
+  prop::SatLiteral getLiteral(TNode atom);
 
   typedef AtomIterator iterator;
   virtual iterator begin_atom_mapping() = 0;
@@ -64,7 +66,7 @@ public:
   virtual void printAtomMapping(std::ostream& os, std::ostream& paren) = 0;
   virtual void printClauses(std::ostream& os, std::ostream& paren) = 0;
   virtual ~CnfProof();
-};
+};/* class CnfProof */
 
 class LFSCCnfProof : public CnfProof {
   void printInputClauses(std::ostream& os, std::ostream& paren);
@@ -81,7 +83,7 @@ public:
 
   virtual void printAtomMapping(std::ostream& os, std::ostream& paren);
   virtual void printClauses(std::ostream& os, std::ostream& paren);
-};
+};/* class LFSCCnfProof */
 
 inline Expr AtomIterator::operator*() {
   return d_cnf.getAtom(*d_it);

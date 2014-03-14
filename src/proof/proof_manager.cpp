@@ -23,6 +23,11 @@
 #include "util/cvc4_assert.h"
 #include "smt/smt_engine.h"
 #include "smt/smt_engine_scope.h"
+#include "theory/output_channel.h"
+#include "theory/valuation.h"
+#include "theory/uf/theory_uf.h"
+#include "theory/uf/equality_engine.h"
+#include "context/context.h"
 
 namespace CVC4 {
 
@@ -95,7 +100,6 @@ TheoryProof* ProofManager::getTheoryProof() {
   return currentPM()->d_theoryProof;
 }
 
-
 void ProofManager::initSatProof(Minisat::Solver* solver) {
   Assert (currentPM()->d_satProof == NULL);
   Assert(currentPM()->d_format == LFSC);
@@ -114,13 +118,72 @@ void ProofManager::initTheoryProof() {
   currentPM()->d_theoryProof = new LFSCTheoryProof();
 }
 
-
-std::string ProofManager::getInputClauseName(ClauseId id) {return append("pb", id); }
+std::string ProofManager::getInputClauseName(ClauseId id) { return append("pb", id); }
 std::string ProofManager::getLemmaClauseName(ClauseId id) { return append("lem", id); }
 std::string ProofManager::getLearntClauseName(ClauseId id) { return append("cl", id); }
 std::string ProofManager::getVarName(prop::SatVariable var) { return append("v", var); }
 std::string ProofManager::getAtomName(prop::SatVariable var) { return append("a", var); }
-std::string ProofManager::getLitName(prop::SatLiteral lit) {return append("l", lit.toInt()); }
+std::string ProofManager::getLitName(prop::SatLiteral lit) { return append("l", lit.toInt()); }
+
+std::string ProofManager::getAtomName(TNode atom) {
+  prop::SatLiteral lit = currentPM()->d_cnfProof->getLiteral(atom);
+  Assert(!lit.isNegated());
+  return getAtomName(lit.getSatVariable());
+}
+std::string ProofManager::getLitName(TNode lit) {
+  return getLitName(currentPM()->d_cnfProof->getLiteral(lit));
+}
+
+class ProofOutputChannel : public theory::OutputChannel {
+public:
+  Node d_conflict;
+  Proof* d_proof;
+
+  ProofOutputChannel() : d_conflict(), d_proof(NULL) {}
+
+  void conflict(TNode n, Proof* pf) throw() {
+    Assert(d_conflict.isNull());
+    Assert(!n.isNull());
+    d_conflict = n;
+    Assert(pf != NULL);
+    d_proof = pf;
+  }
+  bool propagate(TNode) throw() {
+    AlwaysAssert(false);
+    return false;
+  }
+  theory::LemmaStatus lemma(TNode, bool) throw() {
+    AlwaysAssert(false);
+    return theory::LemmaStatus(TNode::null(), 0);
+  }
+  theory::LemmaStatus splitLemma(TNode, bool) throw() {
+    AlwaysAssert(false);
+    return theory::LemmaStatus(TNode::null(), 0);
+  }
+  void requirePhase(TNode, bool) throw() {
+    AlwaysAssert(false);
+  }
+  bool flipDecision() throw() {
+    AlwaysAssert(false);
+    return false;
+  }
+  void setIncomplete() throw() {
+    AlwaysAssert(false);
+  }
+};/* class ProofOutputChannel */
+
+void ProofManager::printProof(std::ostream& os, TNode n) {
+  context::UserContext fakeContext;
+  ProofOutputChannel oc;
+  theory::Valuation v(NULL);
+  theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic, NULL);
+  uf.produceProofs();
+  for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
+    uf.assertFact(*i, false);
+  }
+  uf.check(theory::Theory::EFFORT_FULL);
+  oc.d_proof->toStream(os);
+}
 
 void ProofManager::addClause(ClauseId id, const prop::SatClause* clause, ClauseKind kind) {
   for (unsigned i = 0; i < clause->size(); ++i) {
@@ -139,10 +202,9 @@ void ProofManager::addAssertion(Expr formula) {
   d_inputFormulas.insert(formula);
 }
 
-void ProofManager::setLogic(const std::string& logic_string) {
-  d_logic = logic_string;
+void ProofManager::setLogic(const LogicInfo& logic) {
+  d_logic = logic;
 }
-
 
 LFSCProof::LFSCProof(SmtEngine* smtEngine, LFSCSatProof* sat, LFSCCnfProof* cnf, LFSCTheoryProof* theory)
   : d_satProof(sat)
@@ -174,6 +236,5 @@ void LFSCProof::toStream(std::ostream& out) {
   out << paren.str();
   out << "\n";
 }
-
 
 } /* CVC4  namespace */

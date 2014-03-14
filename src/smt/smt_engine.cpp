@@ -738,7 +738,7 @@ void SmtEngine::finishInit() {
     setTimeLimit(options::cumulativeMillisecondLimit(), true);
   }
 
-  PROOF( ProofManager::currentPM()->setLogic(d_logic.getLogicString()); );
+  PROOF( ProofManager::currentPM()->setLogic(d_logic); );
 }
 
 void SmtEngine::finalOptionsAreSet() {

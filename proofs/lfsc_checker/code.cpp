@@ -1147,11 +1147,13 @@ Expr *run_code(Expr *_e) {
         cond = mpz_sgn( ((IntExpr *)r1)->n )<0;
       else if( e->getop() == IFZERO )
         cond = mpz_sgn( ((IntExpr *)r1)->n )==0;
+      else assert(false);
     }else if( r1->getclass() == RAT_EXPR ){
       if( e->getop() == IFNEG )
         cond = mpq_sgn( ((RatExpr *)r1)->n )<0;
       else if( e->getop() == IFZERO )
         cond = mpq_sgn( ((RatExpr *)r1)->n )==0;
+      else assert(false);
     }
     else
     {

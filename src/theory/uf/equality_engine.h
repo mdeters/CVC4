@@ -29,6 +29,7 @@
 #include "context/cdo.h"
 #include "context/cdhashmap.h"
 #include "util/output.h"
+#include "util/proof.h"
 #include "util/statistics_registry.h"
 #include "theory/rewriter.h"
 #include "theory/theory.h"
@@ -38,7 +39,6 @@
 namespace CVC4 {
 namespace theory {
 namespace eq {
-
 
 class EqProof;
 class EqClassesIterator;
@@ -894,17 +894,16 @@ public:
   bool isFinished() const;
 };/* class EqClassIterator */
 
-class EqProof
-{
+class EqProof : public Proof {
 public:
-  EqProof() : d_id(MERGED_THROUGH_REFLEXIVITY){}
+  EqProof() : d_id(MERGED_THROUGH_REFLEXIVITY) {}
   MergeReasonType d_id;
   Node d_node;
-  std::vector< EqProof * > d_children;
-  void debug_print( const char * c, unsigned tb = 0 );
-};
+  std::vector<EqProof*> d_children;
+  void debug_print(const char* c) const;
+  void toStream(std::ostream& out);
+};/* class EqProof */
 
-} // Namespace eq
-} // Namespace theory
-} // Namespace CVC4
-
+}/* CVC4::theory::eq namespace */
+}/* CVC4::theory namespace */
+}/* CVC4 namespace */

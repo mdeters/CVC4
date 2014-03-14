@@ -40,7 +40,9 @@ void cleanup();
 
 extern char our_getc_c;
 
-void report_error(const std::string &);
+extern void (*report_error)(const std::string &);
+void default_report_error(const std::string &msg);
+std::string default_report_error_info(const std::string &msg);
 
 extern int linenum;
 extern int colnum;

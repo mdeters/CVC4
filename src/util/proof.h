@@ -30,6 +30,12 @@ public:
   virtual void toStream(std::ostream& out) = 0;
 };/* class Proof */
 
+inline std::ostream& operator<<(std::ostream& out, const Proof& pf) CVC4_PUBLIC;
+inline std::ostream& operator<<(std::ostream& out, const Proof& pf) {
+  const_cast<Proof&>(pf).toStream(out);
+  return out;
+}
+
 }/* CVC4 namespace */
 
 #endif /* __CVC4__PROOF_H */
