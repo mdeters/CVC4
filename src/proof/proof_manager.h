@@ -90,7 +90,7 @@ class ProofManager {
 
   // information that will need to be shared across proofs
   IdToClause d_inputClauses;
-  IdToClause d_theoryLemmas;
+  IdToClause d_theoryConflicts;
   ExprSet    d_inputFormulas;
   VarSet     d_propVars;
 
@@ -127,9 +127,9 @@ public:
   clause_iterator end_input_clauses() const { return d_inputClauses.end(); }
   size_t num_input_clauses() const { return d_inputClauses.size(); }
 
-  clause_iterator begin_lemmas() const { return d_theoryLemmas.begin(); }
-  clause_iterator end_lemmas() const { return d_theoryLemmas.end(); }
-  size_t num_lemmas() const { return d_theoryLemmas.size(); }
+  clause_iterator begin_tconflicts() const { return d_theoryConflicts.begin(); }
+  clause_iterator end_tconflicts() const { return d_theoryConflicts.end(); }
+  size_t num_tconflicts() const { return d_theoryConflicts.size(); }
 
   assertions_iterator begin_assertions() const { return d_inputFormulas.begin(); }
   assertions_iterator end_assertions() const { return d_inputFormulas.end(); }

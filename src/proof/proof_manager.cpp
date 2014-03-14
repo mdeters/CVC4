@@ -59,8 +59,8 @@ ProofManager::~ProofManager() {
     delete it->second;
   }
 
-  for(IdToClause::iterator it = d_theoryLemmas.begin();
-      it != d_theoryLemmas.end();
+  for(IdToClause::iterator it = d_theoryConflicts.begin();
+      it != d_theoryConflicts.end();
       ++it) {
     delete it->second;
   }
@@ -214,7 +214,7 @@ void ProofManager::addClause(ClauseId id, const prop::SatClause* clause, ClauseK
     return;
   }
   Assert (kind == THEORY_LEMMA);
-  d_theoryLemmas.insert(std::make_pair(id, clause));
+  d_theoryConflicts.insert(std::make_pair(id, clause));
 }
 
 void ProofManager::addAssertion(Expr formula) {

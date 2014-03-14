@@ -60,11 +60,12 @@ void LFSCCnfProof::printAtomMapping(std::ostream& os, std::ostream& paren) {
     os << "(decl_atom ";
 
     if (ProofManager::currentPM()->getLogic().compare("QF_UF") == 0 ||
+        ProofManager::currentPM()->getLogic().compare("QF_AX") == 0 ||
         ProofManager::currentPM()->getLogic().compare("QF_SAT") == 0) {
       Expr atom = getAtom(*it);
       LFSCTheoryProof::printTerm(atom, os);
     } else {
-      // print fake atoms for all other logics
+      // print fake atoms for all other logics (for now)
       os << "true ";
     }
 
@@ -79,7 +80,7 @@ void LFSCCnfProof::printClauses(std::ostream& os, std::ostream& paren) {
 }
 
 void LFSCCnfProof::printInputClauses(std::ostream& os, std::ostream& paren) {
-  os << " ;; Input Clauses \n";
+  os << " ;; Input Clauses\n";
   ProofManager::clause_iterator it = ProofManager::currentPM()->begin_input_clauses();
   ProofManager::clause_iterator end = ProofManager::currentPM()->end_input_clauses();
 
@@ -96,13 +97,13 @@ void LFSCCnfProof::printInputClauses(std::ostream& os, std::ostream& paren) {
 }
 
 void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
-  os << " ;; Theory Lemmas \n";
-  ProofManager::clause_iterator it = ProofManager::currentPM()->begin_lemmas();
-  ProofManager::clause_iterator end = ProofManager::currentPM()->end_lemmas();
+  os << " ;; Theory Conflicts\n";
+  ProofManager::clause_iterator it = ProofManager::currentPM()->begin_tconflicts();
+  ProofManager::clause_iterator end = ProofManager::currentPM()->end_tconflicts();
 
   for(size_t n = 0; it != end; ++it, ++n) {
     if(n % 100 == 0) {
-      Chat() << "proving theory lemmas...(" << n << "/" << ProofManager::currentPM()->num_lemmas() << ")" << std::endl;
+      Chat() << "proving theory conflicts...(" << n << "/" << ProofManager::currentPM()->num_tconflicts() << ")" << std::endl;
     }
 
     ClauseId id = it->first;
