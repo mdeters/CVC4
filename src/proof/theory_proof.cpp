@@ -56,8 +56,6 @@ std::string toLFSCKind(Kind kind) {
   case kind::IFF: return "iff";
   case kind::IMPLIES: return "impl";
   case kind::NOT: return "not";
-  case kind::SELECT: return "read";
-  case kind::STORE: return "write";
   default:
     Unreachable();
   }
@@ -211,12 +209,27 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
 
   /* Arrays */
   case kind::SELECT:
+    os << "(apply _ _ (apply _ _ (read ";
+    printSort(ArrayType(term[0].getType()).getIndexType(), os);
+    os << " ";
+    printSort(ArrayType(term[0].getType()).getConstituentType(), os);
+    os << ") ";
+    printTerm(term[0], os);
+    os << ") ";
+    printTerm(term[1], os);
+    os << ")";
+    return;
   case kind::STORE:
-    os << "(" << toLFSCKind(k);
-    for (unsigned i = 0; i < term.getNumChildren(); ++i) {
-      os << " ";
-      printTerm(term[i], os);
-    }
+    os << "(apply _ _ (apply _ _ (apply _ _ (write ";
+    printSort(ArrayType(term[0].getType()).getIndexType(), os);
+    os << " ";
+    printSort(ArrayType(term[0].getType()).getConstituentType(), os);
+    os << ") ";
+    printTerm(term[0], os);
+    os << ") ";
+    printTerm(term[1], os);
+    os << ") ";
+    printTerm(term[2], os);
     os << ")";
     return;
 
@@ -247,6 +260,31 @@ void LFSCTheoryProof::printAssertions(std::ostream& os, std::ostream& paren) {
   }
 }
 
+void LFSCTheoryProof::printSort(Type type, std::ostream& os) {
+  if(type.isFunction()) {
+    std::ostringstream fparen;
+    FunctionType ftype = (FunctionType)type;
+    std::vector<Type> args = ftype.getArgTypes();
+    args.push_back(ftype.getRangeType());
+    os << "(arrow";
+    for(unsigned i = 0; i < args.size(); i++) {
+      Type arg_type = args[i];
+      //Assert (arg_type.isSort() || arg_type.isBoolean());
+      os << " " << arg_type;
+      if(i < args.size() - 2) {
+        os << " (arrow";
+        fparen << ")";
+      }
+    }
+    os << fparen.str() << ")";
+  } else if(type.isArray()) {
+    ArrayType arrtype = type;
+    os << "(array " << arrtype.getIndexType() << " " << arrtype.getConstituentType() << ")";
+  } else {
+    os << type;
+  }
+}
+
 void LFSCTheoryProof::printDeclarations(std::ostream& os, std::ostream& paren) {
   // declaring the sorts
   for (SortSet::const_iterator it = d_sortDeclarations.begin(); it != d_sortDeclarations.end(); ++it) {
@@ -260,33 +298,8 @@ void LFSCTheoryProof::printDeclarations(std::ostream& os, std::ostream& paren) {
 
     os << "(% " << sanitize(term) << " ";
     os << "(term ";
-
-    Type type = term.getType();
-    if(type.isFunction()) {
-      std::ostringstream fparen;
-      FunctionType ftype = (FunctionType)type;
-      std::vector<Type> args = ftype.getArgTypes();
-      args.push_back(ftype.getRangeType());
-      os << "(arrow";
-      for(unsigned i = 0; i < args.size(); i++) {
-        Type arg_type = args[i];
-        //Assert (arg_type.isSort() || arg_type.isBoolean());
-        os << " " << arg_type;
-        if(i < args.size() - 2) {
-          os << " (arrow";
-          fparen << ")";
-        }
-      }
-      os << fparen.str() << "))\n";
-    } else if(type.isArray()) {
-      Assert(term.isVariable());
-      ArrayType arrtype = type;
-      os << "(array " << arrtype.getIndexType() << " " << arrtype.getConstituentType() << ")";
-    } else {
-      Assert(term.isVariable());
-      //Assert (type.isSort() || type.isBoolean());
-      os << type << ")\n";
-    }
+    printSort(term.getType(), os);
+    os << ")\n";
     paren << ")";
   }
 }

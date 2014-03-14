@@ -44,6 +44,7 @@ public:
 };/* class TheoryProof */
 
 class LFSCTheoryProof : public TheoryProof {
+  static void printSort(Type type, std::ostream& os);
   void printDeclarations(std::ostream& os, std::ostream& paren);
 public:
   static void printTerm(Expr term, std::ostream& os);
