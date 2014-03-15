@@ -373,7 +373,7 @@ ClauseId SatProof::registerClause(::Minisat::CRef clause, ClauseKind kind, uint6
     }
     if (kind == THEORY_LEMMA) {
       Assert(d_lemmaClauses.find(newId) == d_lemmaClauses.end());
-      d_lemmaClauses.insert(newId);
+      d_lemmaClauses[newId] = proof_id;
     }
   }
   Debug("proof:sat:detailed") << "registerClause CRef:" << clause << " id:" << d_clauseId[clause] << " " << kind << "\n";
@@ -392,7 +392,7 @@ ClauseId SatProof::registerUnitClause(::Minisat::Lit lit, ClauseKind kind, uint6
     }
     if (kind == THEORY_LEMMA) {
       Assert(d_lemmaClauses.find(newId) == d_lemmaClauses.end());
-      d_lemmaClauses.insert(newId);
+      d_lemmaClauses[newId] = proof_id;
     }
   }
   Debug("proof:sat:detailed") << "registerUnitClause " << d_unitId[toInt(lit)] << " " << kind << "\n";

@@ -53,6 +53,8 @@ LFSCCnfProof::iterator LFSCCnfProof::end_atom_mapping() {
 }
 
 void LFSCCnfProof::printAtomMapping(std::ostream& os, std::ostream& paren) {
+  os << " ;; Atom mapping\n";
+
   ProofManager::var_iterator it = ProofManager::currentPM()->begin_vars();
   ProofManager::var_iterator end = ProofManager::currentPM()->end_vars();
 
@@ -75,12 +77,18 @@ void LFSCCnfProof::printAtomMapping(std::ostream& os, std::ostream& paren) {
 }
 
 void LFSCCnfProof::printClauses(std::ostream& os, std::ostream& paren) {
-  printInputClauses(os, paren);
   printTheoryLemmas(os, paren);
+  printInputClauses(os, paren);
+  printTheoryConflicts(os, paren);
+}
+
+void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
+  os << " ;; Theory Lemmas\n";
+  os << " ;; Theory Rewrites\n";
 }
 
 void LFSCCnfProof::printInputClauses(std::ostream& os, std::ostream& paren) {
-  os << " ;; Input Clauses\n";
+  os << " ;; Clauses\n";
   ProofManager::clause_iterator it = ProofManager::currentPM()->begin_input_clauses();
   ProofManager::clause_iterator end = ProofManager::currentPM()->end_input_clauses();
 
@@ -96,7 +104,7 @@ void LFSCCnfProof::printInputClauses(std::ostream& os, std::ostream& paren) {
   }
 }
 
-void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
+void LFSCCnfProof::printTheoryConflicts(std::ostream& os, std::ostream& paren) {
   os << " ;; Theory Conflicts\n";
   ProofManager::clause_iterator it = ProofManager::currentPM()->begin_tconflicts();
   ProofManager::clause_iterator end = ProofManager::currentPM()->end_tconflicts();
@@ -107,6 +115,11 @@ void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
     }
 
     ClauseId id = it->first;
+    if(ProofManager::getSatProof()->d_lemmaClauses.find(id) != ProofManager::getSatProof()->d_lemmaClauses.end()) {
+      uint64_t proof_id = ProofManager::getSatProof()->d_lemmaClauses[id];
+      Debug("mgd") << "; ID is " << id << " and that's a lemma with " << ((proof_id >> 32) & 0xffffffff) << " / " << (proof_id & 0xffffffff) << std::endl;
+      Debug("mgd") << "; that means the lemma was " << d_cnfStream->getAssertion(proof_id & 0xffffffff) << std::endl;
+    }
     const prop::SatClause* clause = it->second;
     os << "(satlem _ _ ";
     std::ostringstream clause_paren;
@@ -123,7 +136,7 @@ void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
       }
     }
     Node cl = c;
-    //os << "\n;; need a proof of " << cl << "\n";
+    os << "\n;; need a proof of " << cl << "\n";
     ProofManager::currentPM()->printProof(os, cl);
     os << clause_paren.str()
        << " (\\ " << ProofManager::getLemmaClauseName(id) << "\n";

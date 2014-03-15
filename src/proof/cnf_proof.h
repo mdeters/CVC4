@@ -30,7 +30,7 @@
 namespace CVC4 {
 namespace prop {
   class CnfStream;
-}
+}/* CVC4::prop namespace */
 
 class CnfProof;
 
@@ -71,6 +71,7 @@ public:
 class LFSCCnfProof : public CnfProof {
   void printInputClauses(std::ostream& os, std::ostream& paren);
   void printTheoryLemmas(std::ostream& os, std::ostream& paren);
+  void printTheoryConflicts(std::ostream& os, std::ostream& paren);
   void printClause(const prop::SatClause& clause, std::ostream& os, std::ostream& paren);
 
 public:

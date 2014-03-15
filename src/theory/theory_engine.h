@@ -296,18 +296,18 @@ class TheoryEngine {
       return d_engine->propagate(literal, d_theory);
     }
 
-    theory::LemmaStatus lemma(TNode lemma, bool removable = false, bool preprocess = false) throw(TypeCheckingExceptionPrivate) {
+    theory::LemmaStatus lemma(TNode lemma, ProofRule rule, bool removable = false, bool preprocess = false) throw(TypeCheckingExceptionPrivate) {
       Trace("theory::lemma") << "EngineOutputChannel<" << d_theory << ">::lemma(" << lemma << ")" << std::endl;
       ++ d_statistics.lemmas;
       d_engine->d_outputChannelUsed = true;
-      return d_engine->lemma(lemma, false, removable, preprocess, theory::THEORY_LAST);
+      return d_engine->lemma(lemma, rule, false, removable, preprocess, theory::THEORY_LAST);
     }
 
     theory::LemmaStatus splitLemma(TNode lemma, bool removable = false) throw(TypeCheckingExceptionPrivate) {
       Trace("theory::lemma") << "EngineOutputChannel<" << d_theory << ">::lemma(" << lemma << ")" << std::endl;
       ++ d_statistics.lemmas;
       d_engine->d_outputChannelUsed = true;
-      return d_engine->lemma(lemma, false, removable, false, d_theory);
+      return d_engine->lemma(lemma, RULE_INVALID, false, removable, false, d_theory);
     }
 
     void demandRestart() throw(TypeCheckingExceptionPrivate) {
@@ -317,7 +317,7 @@ class TheoryEngine {
                                         "A boolean variable asserted to be true to force a restart");
       Trace("theory::restart") << "EngineOutputChannel<" << d_theory << ">::restart(" << restartVar << ")" << std::endl;
       ++ d_statistics.restartDemands;
-      lemma(restartVar, true);
+      lemma(restartVar, RULE_INVALID, true);
     }
 
     void requirePhase(TNode n, bool phase)
@@ -455,7 +455,7 @@ class TheoryEngine {
    * @param removable can the lemma be remove (restrictions apply)
    * @param needAtoms if not THEORY_LAST, then
    */
-  theory::LemmaStatus lemma(TNode node, bool negated, bool removable, bool preprocess, theory::TheoryId atomsTo);
+  theory::LemmaStatus lemma(TNode node, ProofRule rule, bool negated, bool removable, bool preprocess, theory::TheoryId atomsTo);
 
   /** Enusre that the given atoms are send to the given theory */
   void ensureLemmaAtoms(const std::vector<TNode>& atoms, theory::TheoryId theory);

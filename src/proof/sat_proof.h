@@ -86,6 +86,7 @@ typedef std::hash_map < ClauseId, ::Minisat::Lit>   IdUnitMap;
 typedef std::hash_map < int, ClauseId>            UnitIdMap; //FIXME
 typedef std::hash_map < ClauseId, ResChain*>      IdResMap;
 typedef std::hash_set < ClauseId >                IdHashSet;
+typedef std::hash_map < ClauseId, uint64_t >      IdProofRuleMap;
 typedef std::vector   < ResChain* >               ResStack;
 typedef std::hash_map <ClauseId, prop::SatClause* >     IdToSatClause;
 typedef std::set < ClauseId >                     IdSet;
@@ -116,7 +117,9 @@ protected:
   IdHashSet           d_deleted;
   IdToSatClause       d_deletedTheoryLemmas;
   IdHashSet           d_inputClauses;
-  IdHashSet           d_lemmaClauses;
+public:
+  IdProofRuleMap      d_lemmaClauses;
+protected:
   // resolutions
   IdResMap            d_resChains;
   ResStack            d_resStack;

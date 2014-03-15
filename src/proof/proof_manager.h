@@ -80,7 +80,10 @@ enum ProofRule {
   RULE_DERIVED,     /* a "macro" rule */
   RULE_RECONSTRUCT, /* prove equivalence using another method */
   RULE_TRUST,       /* trust without evidence (escape hatch until proofs are fully supported) */
-  RULE_INVALID      /* assert-fail if this is ever needed in proof; use e.g. for split lemmas */
+  RULE_INVALID,     /* assert-fail if this is ever needed in proof; use e.g. for split lemmas */
+  RULE_CONFLICT,    /* re-construct as a conflict */
+
+  RULE_ARRAYS_EXT,  /* arrays, extensional */
 };/* enum ProofRules */
 
 class ProofManager {

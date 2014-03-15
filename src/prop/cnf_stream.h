@@ -201,7 +201,7 @@ public:
    * @param removable whether the sat solver can choose to remove the clauses
    * @param negated whether we are asserting the node negated
    */
-  virtual void convertAndAssert(TNode node, bool removable, bool negated, ProofRule proof_id) = 0;
+  virtual void convertAndAssert(TNode node, bool removable, bool negated, ProofRule proof_id, TNode from = TNode::null()) = 0;
 
   /**
    * Get the node that is represented by the given SatLiteral.
@@ -232,6 +232,13 @@ public:
    * node? E.g., it needs to be a boolean? -Chris]
    */
   SatLiteral getLiteral(TNode node);
+
+  /**
+   * Get the assertion with a given ID.  (Used for reconstructing proofs.)
+   */
+  TNode getAssertion(uint64_t id) {
+    return d_assertionTable[id];
+  }
 
   /**
    * Returns the Boolean variables from the input problem.
@@ -269,7 +276,7 @@ public:
    * @param removable is this something that can be erased
    * @param negated true if negated
    */
-  void convertAndAssert(TNode node, bool removable, bool negated, ProofRule proof_id);
+  void convertAndAssert(TNode node, bool removable, bool negated, ProofRule proof_id, TNode from = TNode::null());
 
   /**
    * Constructs the stream to use the given sat solver.

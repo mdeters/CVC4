@@ -49,7 +49,7 @@ struct QuantifierExistsTypeRule {
   inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)
     throw(TypeCheckingExceptionPrivate) {
     Debug("typecheck-q") << "type check for ex " << n << std::endl;
-    Assert(n.getKind() == kind::EXISTS && n.getNumChildren()>0 );
+    Assert((n.getKind() == kind::EXISTS || n.getKind() == kind::LEMMA_EXISTS) && n.getNumChildren()>0 );
     if( check ){
       if( n[ 0 ].getType(check)!=nodeManager->boundVarListType() ){
         throw TypeCheckingExceptionPrivate(n, "first argument of existential quantifier is not bound var list");

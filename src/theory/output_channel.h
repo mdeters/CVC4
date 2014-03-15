@@ -21,6 +21,7 @@
 
 #include "util/cvc4_assert.h"
 #include "theory/interrupted.h"
+#include "proof/proof_manager.h"
 
 namespace CVC4 {
 namespace theory {
@@ -117,9 +118,14 @@ public:
    * @return the "status" of the lemma, including user level at which
    * the lemma resides; the lemma will be removed when this user level pops
    */
+  virtual LemmaStatus lemma(TNode n, ProofRule rule,
+                            bool removable = false, bool preprocess = false)
+    throw(TypeCheckingExceptionPrivate) = 0;
   virtual LemmaStatus lemma(TNode n, bool removable = false,
                             bool preprocess = false)
-    throw(TypeCheckingExceptionPrivate) = 0;
+    throw(TypeCheckingExceptionPrivate) {
+    return lemma(n, RULE_INVALID, removable, preprocess);
+  }
 
   /**
    * Request a split on a new theory atom.  This is equivalent to

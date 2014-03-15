@@ -67,7 +67,6 @@ void SmtEngine::checkProof() {
 
   Proof* pf = getProof();
 
-<<<<<<< HEAD
   Chat() << "checking proof..." << endl;
 
   if( ! ( d_logic.isPure(theory::THEORY_BOOL) ||

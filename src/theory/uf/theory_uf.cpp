@@ -253,7 +253,7 @@ void TheoryUF::presolve() {
     for(vector<Node>::const_iterator i = newClauses.begin();
         i != newClauses.end();
         ++i) {
-      d_out->lemma(*i);
+      d_out->lemma(*i, RULE_CONFLICT);
     }
   }
   Debug("uf") << "uf: end presolve()" << endl;

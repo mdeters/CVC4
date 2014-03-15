@@ -14,6 +14,7 @@ rewriter ::CVC4::theory::quantifiers::QuantifiersRewriter "theory/quantifiers/qu
 operator FORALL 2:3 "universally quantified formula; first parameter is an BOUND_VAR_LIST, second is quantifier body, and an optional third parameter is an INST_PATTERN_LIST"
 
 operator EXISTS 2:3 "existentially quantified formula; first parameter is an BOUND_VAR_LIST, second is quantifier body, and an optional third parameter is an INST_PATTERN_LIST"
+operator LEMMA_EXISTS 2 "existentially quantified formula for internal use in theory lemmas"
 
 variable INST_CONSTANT "instantiation constant"
 
@@ -42,11 +43,12 @@ sort INST_PATTERN_LIST_TYPE \
 # a list of instantiation patterns
 operator INST_PATTERN_LIST 1: "a list of instantiation patterns"
 
-typerule FORALL ::CVC4::theory::quantifiers::QuantifierForallTypeRule 
-typerule EXISTS ::CVC4::theory::quantifiers::QuantifierExistsTypeRule 
-typerule BOUND_VAR_LIST ::CVC4::theory::quantifiers::QuantifierBoundVarListTypeRule 
-typerule INST_PATTERN ::CVC4::theory::quantifiers::QuantifierInstPatternTypeRule 
-typerule INST_PATTERN_LIST ::CVC4::theory::quantifiers::QuantifierInstPatternListTypeRule 
+typerule FORALL ::CVC4::theory::quantifiers::QuantifierForallTypeRule
+typerule EXISTS ::CVC4::theory::quantifiers::QuantifierExistsTypeRule
+typerule LEMMA_EXISTS ::CVC4::theory::quantifiers::QuantifierExistsTypeRule
+typerule BOUND_VAR_LIST ::CVC4::theory::quantifiers::QuantifierBoundVarListTypeRule
+typerule INST_PATTERN ::CVC4::theory::quantifiers::QuantifierInstPatternTypeRule
+typerule INST_PATTERN_LIST ::CVC4::theory::quantifiers::QuantifierInstPatternListTypeRule
 
 # for rewrite rules
 # types...

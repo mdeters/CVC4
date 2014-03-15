@@ -25,10 +25,13 @@
 #include "smt/smt_engine_scope.h"
 #include "theory/output_channel.h"
 #include "theory/valuation.h"
+#include "util/node_visitor.h"
+#include "theory/term_registration_visitor.h"
 #include "theory/uf/theory_uf.h"
 #include "theory/uf/equality_engine.h"
 #include "theory/arrays/theory_arrays.h"
 #include "context/context.h"
+#include "util/hash.h"
 
 namespace CVC4 {
 
@@ -150,11 +153,11 @@ public:
     Assert(pf != NULL);
     d_proof = pf;
   }
-  bool propagate(TNode) throw() {
-    AlwaysAssert(false);
+  bool propagate(TNode x) throw() {
+    Debug("mgd") << "got a propagation: " << x << std::endl;
     return false;
   }
-  theory::LemmaStatus lemma(TNode n, bool, bool) throw() {
+  theory::LemmaStatus lemma(TNode n, ProofRule rule, bool, bool) throw() {
     //AlwaysAssert(false);
     Debug("mgd") << "new lemma: " << n << std::endl;
     d_lemma = n;
@@ -176,6 +179,46 @@ public:
   }
 };/* class ProofOutputChannel */
 
+class MyPreRegisterVisitor {
+  theory::Theory* d_theory;
+  __gnu_cxx::hash_set<TNode, TNodeHashFunction> d_visited;
+
+public:
+
+  typedef void return_type;
+  
+  MyPreRegisterVisitor(theory::Theory* theory)
+  : d_theory(theory)
+  , d_visited()
+  {}
+
+  /**
+   * Returns true is current has already been pre-registered with both current and parent theories.
+   */
+  bool alreadyVisited(TNode current, TNode parent) { return d_visited.find(current) != d_visited.end(); }
+
+  /**
+   * Pre-registeres current with any of the current and parent theories that haven't seen the term yet.
+   */
+  void visit(TNode current, TNode parent) {
+    if(theory::Theory::theoryOf(current) == d_theory->getId()) {
+      Debug("mgd") << "preregister " << current << std::endl;
+      d_theory->preRegisterTerm(current);
+      d_visited.insert(current);
+    }
+  }
+
+  /**
+   * Marks the node as the starting literal.
+   */
+  void start(TNode node) { }
+
+  /**
+   * Notifies the engine of all the theories used.
+   */
+  void done(TNode node) { }
+};
+
 void ProofManager::printProof(std::ostream& os, TNode n) {
   context::UserContext fakeContext;
   ProofOutputChannel oc;
@@ -183,8 +226,10 @@ void ProofManager::printProof(std::ostream& os, TNode n) {
   //theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic);
   theory::arrays::TheoryArrays uf(&fakeContext, &fakeContext, oc, v, d_logic);
   uf.produceProofs();
+  MyPreRegisterVisitor preRegVisitor(&uf);
   for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
-    Debug("mgd") << "asserting " << *i << std::endl;
+    Debug("mgd") << "preregistering and asserting " << *i << std::endl;
+    NodeVisitor<MyPreRegisterVisitor>::run(preRegVisitor, *i);
     uf.assertFact(*i, false);
   }
   uf.check(theory::Theory::EFFORT_FULL);
@@ -238,6 +283,7 @@ void LFSCProof::toStream(std::ostream& out) {
   smt::SmtScope scope(d_smtEngine);
   std::ostringstream paren;
   out << "(check\n";
+  out << " ;; Declarations\n";
   if (d_theoryProof == NULL) {
     d_theoryProof = new LFSCTheoryProof();
   }
@@ -247,6 +293,7 @@ void LFSCProof::toStream(std::ostream& out) {
     d_theoryProof->addDeclaration(*i);
   }
   d_theoryProof->printAssertions(out, paren);
+  out << " ;; Proof of empty clause follows\n";
   out << "(: (holds cln)\n";
   d_cnfProof->printAtomMapping(out, paren);
   d_cnfProof->printClauses(out, paren);

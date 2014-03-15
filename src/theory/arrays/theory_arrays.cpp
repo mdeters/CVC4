@@ -24,7 +24,7 @@
 #include "theory/theory_model.h"
 #include "theory/arrays/options.h"
 #include "smt/logic_exception.h"
-
+#include "proof/proof_manager.h"
 
 using namespace std;
 
@@ -964,15 +964,17 @@ void TheoryArrays::check(Effort e) {
           if(fact[0][0].getType().isArray() && !d_conflict) {
             NodeManager* nm = NodeManager::currentNM();
             TypeNode indexType = fact[0][0].getType()[0];
-            TNode k = getSkolem(fact,"array_ext_index", indexType, "an extensional lemma index variable from the theory of arrays", false);
+            //TNode k = getSkolem(fact,"array_ext_index", indexType, "an extensional lemma index variable from the theory of arrays", false);
+            Node k = nm->mkBoundVar("k", indexType);
 
             Node ak = nm->mkNode(kind::SELECT, fact[0][0], k);
             Node bk = nm->mkNode(kind::SELECT, fact[0][1], k);
-            Node eq = d_valuation.ensureLiteral(ak.eqNode(bk));
-            Assert(eq.getKind() == kind::EQUAL);
-            Node lemma = fact[0].orNode(eq.notNode());
+            //Node eq = d_valuation.ensureLiteral(ak.eqNode(bk));
+            Node eq = ak.eqNode(bk);
+            Node ex = nm->mkNode(kind::LEMMA_EXISTS, nm->mkNode(kind::BOUND_VAR_LIST, k), eq.notNode());
+            Node lemma = fact[0].orNode(ex);
             Trace("arrays-lem")<<"Arrays::addExtLemma " << lemma <<"\n";
-            d_out->lemma(lemma);
+            d_out->lemma(lemma, RULE_ARRAYS_EXT);
             ++d_numExt;
           }
           else {
