@@ -100,6 +100,7 @@ void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
     }
 
     ClauseId id = it->first;
+Debug("mgd") << "THE ID IS " << id << std::endl;
     const prop::SatClause* clause = it->second;
     NodeBuilder<> c(kind::AND);
     for(unsigned i = 0; i < clause->size(); ++i) {
@@ -143,13 +144,14 @@ void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
       } else if(proof_id == 0) {
         // theory propagation caused conflict
         ProofManager::currentPM()->printProof(os, cl);
+      } else if(((proof_id >> 32) & 0xffffffff) == RULE_CONFLICT) {
+        os << "\n;; need to generate a (conflict) proof of " << cl << "\n";
+        ProofManager::currentPM()->printProof(os, cl);
       } else {
         os << "\n;; need to generate a (lemma) proof of " << cl;
         os << "\n;; DON'T KNOW HOW !!\n";
-      }
-    } else if(ProofManager::getSatProof()->d_theoryPropagations.find(id) != ProofManager::getSatProof()->d_theoryPropagations.end()) {
-        os << "\n;; TRUST T-PROPAGATION!!\n";
         os << "(clausify_false trust)\n";
+      }
     } else {
       os << "\n;; need to generate a (conflict) proof of " << cl << "\n";
       ProofManager::currentPM()->printProof(os, cl);

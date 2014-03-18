@@ -259,11 +259,9 @@ void ProofManager::addClause(ClauseId id, const prop::SatClause* clause, ClauseK
   }*/
   if (kind == INPUT) {
     d_inputClauses.insert(std::make_pair(id, clause));
-  } else if(kind == THEORY_LEMMA) {
-    d_theoryLemmas.insert(std::make_pair(id, clause));
   } else {
-    Assert(kind == THEORY_PROPAGATION);
-    d_theoryPropagations.insert(std::make_pair(id, clause));
+    Assert(kind == THEORY_LEMMA);
+    d_theoryLemmas.insert(std::make_pair(id, clause));
   }
 }
 

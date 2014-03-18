@@ -81,14 +81,14 @@
   (! a (atom v f)
   (! u (th_holds f)
     (holds (clc (pos v) cln)))))))
-    
+
 (declare clausify_form_not
   (! f formula
   (! v var
   (! a (atom v f)
   (! u (th_holds (not f))
     (holds (clc (neg v) cln)))))))
-    
+
 (declare clausify_false
   (! u (th_holds false)
     (holds cln)))

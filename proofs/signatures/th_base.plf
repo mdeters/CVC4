@@ -18,8 +18,7 @@
                (! t1 (term (arrow s1 s2))
                (! t2 (term s1)
                 (term s2))))))
-                
-                
+
 ; inference rules :
 
 (declare trust (th_holds false))	; temporary

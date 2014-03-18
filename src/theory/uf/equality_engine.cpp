@@ -2132,10 +2132,11 @@ inline static Node eqNode(TNode n1, TNode n2) {
 
 // congruence matching term helper
 inline static bool match(TNode n1, TNode n2) {
-  if(n1.getKind() != kind::PARTIAL_APPLY_UF && n1.getKind() != kind::APPLY_UF) {
-    return n1.getKind() == n2.getKind() || n1 == n2.getOperator();
+  Debug("mgd") << "match " << n1 << " " << n2 << std::endl;
+  if(n1.getType().isFunction()) {
+    return n1 == n2.getOperator();
   }
-  if(n2.getKind() != kind::PARTIAL_APPLY_UF && n2.getKind() != kind::APPLY_UF) {
+  if(n2.getType().isFunction()) {
     return n2 == n1.getOperator();
   }
 
@@ -2208,6 +2209,8 @@ Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << "
 
   switch(pf->d_id) {
   case MERGED_THROUGH_CONGRUENCE: {
+    Debug("mgd") << "\nok, looking at congruence:\n";
+    pf->debug_print("mgd");
     std::stack<const EqProof*> stk;
     for(const EqProof* pf2 = pf; pf2->d_id == MERGED_THROUGH_CONGRUENCE; pf2 = pf2->d_children[0]) {
       Assert(!pf2->d_node.isNull());
@@ -2226,19 +2229,20 @@ Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << "
     std::stringstream ss;
     Node n2 = toStreamRecLFSC(ss, pf2->d_children[1], tb + 1);
 Debug("mgd") << "\nok, in FIRST cong[" << stk.size() << "]" << "\n";
+    pf2->debug_print("mgd");
 Debug("mgd") << "looking at " << pf2->d_node << "\n";
 Debug("mgd") << "           " << n1 << "\n";
 Debug("mgd") << "           " << n2 << "\n";
     int side = 0;
     if(match(pf2->d_node, n1[0])) {
-if(tb == 1) {
+      //if(tb == 1) {
 Debug("mgd") << "SIDE IS 0\n";
-}
+//}
       side = 0;
     } else {
-if(tb == 1) {
+      //if(tb == 1) {
 Debug("mgd") << "SIDE IS 1\n";
-}
+//}
 if(!match(pf2->d_node, n1[1])) {
 Debug("mgd") << "IN BAD CASE, our first subproof is\n";
 pf2->d_children[0]->debug_print("mgd");
@@ -2246,18 +2250,27 @@ pf2->d_children[0]->debug_print("mgd");
       Assert(match(pf2->d_node, n1[1]));
       side = 1;
     }
-    if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF) {
-      b1 << n1[side].getOperator();
+    if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF || n1[side].getKind() == kind::SELECT || n1[side].getKind() == kind::STORE) {
+      if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF) {
+        b1 << n1[side].getOperator();
+      }
       b1.append(n1[side].begin(), n1[side].end());
     } else {
       b1 << n1[side];
     }
-    if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF) {
-      b2 << n1[1-side].getOperator();
+    if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF || n1[side].getKind() == kind::SELECT || n1[side].getKind() == kind::STORE) {
+      if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF) {
+        b2 << n1[1-side].getOperator();
+      }
       b2.append(n1[1-side].begin(), n1[1-side].end());
     } else {
       b2 << n1[1-side];
     }
+    Debug("mgd") << "pf2->d_node " << pf2->d_node << std::endl;
+    Debug("mgd") << "b1.getNumChildren() " << b1.getNumChildren() << std::endl;
+    Debug("mgd") << "n1 " << n1 << std::endl;
+    Debug("mgd") << "n2 " << n2 << std::endl;
+    Debug("mgd") << "side " << side << std::endl;
     if(pf2->d_node[b1.getNumChildren()] == n2[side]) {
       b1 << n2[side];
       b2 << n2[1-side];
@@ -2447,6 +2460,47 @@ Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
     return n1;
   }
 
+  case MERGED_ARRAYS_ROW: {
+    Debug("mgd") << "row lemma: " << pf->d_node << std::endl;
+    Assert(pf->d_node.getKind() == kind::EQUAL);
+    TNode t1, t2, t3, t4;
+    Node ret;
+    if(pf->d_node[1].getKind() == kind::SELECT &&
+       pf->d_node[1][0].getKind() == kind::STORE &&
+       pf->d_node[0].getKind() == kind::SELECT &&
+       pf->d_node[0][0] == pf->d_node[1][0][0] &&
+       pf->d_node[0][1] == pf->d_node[1][1]) {
+      t2 = pf->d_node[1][0][1];
+      t3 = pf->d_node[1][1];
+      t1 = pf->d_node[0][0];
+      t4 = pf->d_node[1][0][2];
+      ret = pf->d_node[1].eqNode(pf->d_node[0]);
+      Debug("mgd") << "t1 " << t1 << "\nt2 " << t2 << "\nt3 " << t3 << "\nt4 " << t4 << "\n";
+    } else {
+      Assert(pf->d_node[0].getKind() == kind::SELECT &&
+             pf->d_node[0][0].getKind() == kind::STORE &&
+             pf->d_node[1].getKind() == kind::SELECT &&
+             pf->d_node[1][0] == pf->d_node[0][0][0] &&
+             pf->d_node[1][1] == pf->d_node[0][1]);
+      t2 = pf->d_node[0][0][1];
+      t3 = pf->d_node[0][1];
+      t1 = pf->d_node[1][0];
+      t4 = pf->d_node[0][0][2];
+      ret = pf->d_node;
+      Debug("mgd") << "t1 " << t1 << "\nt2 " << t2 << "\nt3 " << t3 << "\nt4 " << t4 << "\n";
+    }
+    out << "(row _ _ ";
+    LFSCTheoryProof::printTerm(t2.toExpr(), out);
+    out << " ";
+    LFSCTheoryProof::printTerm(t3.toExpr(), out);
+    out << " ";
+    LFSCTheoryProof::printTerm(t1.toExpr(), out);
+    out << " ";
+    LFSCTheoryProof::printTerm(t4.toExpr(), out);
+    out << " " << ProofManager::getLitName(t2.eqNode(t3)) << ")";
+    return ret;
+  }
+
   case MERGED_ARRAYS_ROW1: {
     Debug("mgd") << "row1 lemma: " << pf->d_node << std::endl;
     Assert(pf->d_node.getKind() == kind::EQUAL);
@@ -2456,19 +2510,21 @@ Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
        pf->d_node[1][0].getKind() == kind::STORE &&
        pf->d_node[1][0][1] == pf->d_node[1][1] &&
        pf->d_node[1][0][2] == pf->d_node[0]) {
-      t1 = pf->d_node[1][0];
-      t2 = pf->d_node[1][1];
+      t1 = pf->d_node[1][0][0];
+      t2 = pf->d_node[1][0][1];
       t3 = pf->d_node[0];
       ret = pf->d_node[1].eqNode(pf->d_node[0]);
+      Debug("mgd") << "t1 " << t1 << "\nt2 " << t2 << "\nt3 " << t3 << "\n";
     } else {
       Assert(pf->d_node[0].getKind() == kind::SELECT &&
              pf->d_node[0][0].getKind() == kind::STORE &&
              pf->d_node[0][0][1] == pf->d_node[0][1] &&
              pf->d_node[0][0][2] == pf->d_node[1]);
-      t1 = pf->d_node[0][0];
-      t2 = pf->d_node[0][1];
+      t1 = pf->d_node[0][0][0];
+      t2 = pf->d_node[0][0][1];
       t3 = pf->d_node[1];
       ret = pf->d_node;
+      Debug("mgd") << "t1 " << t1 << "\nt2 " << t2 << "\nt3 " << t3 << "\n";
     }
     out << "(row1 _ _ ";
     LFSCTheoryProof::printTerm(t1.toExpr(), out);
@@ -2476,7 +2532,7 @@ Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
     LFSCTheoryProof::printTerm(t2.toExpr(), out);
     out << " ";
     LFSCTheoryProof::printTerm(t3.toExpr(), out);
-    out << ") ";
+    out << ")";
     return ret;
   }
 
@@ -2484,6 +2540,7 @@ Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
     Assert(!pf->d_node.isNull());
     Assert(pf->d_children.empty());
     Debug("mgd") << "theory proof: " << pf->d_node << " by rule " << int(pf->d_id) << std::endl;
+    AlwaysAssert(false);
     return pf->d_node;
   }
 }

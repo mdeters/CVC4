@@ -240,10 +240,10 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
   case kind::BUILTIN:
     switch(k = term.getConst<Kind>()) {
     case kind::SELECT:
-      os << "(read _ _)";
+      os << "(read Index Element)";
       break;
     case kind::STORE:
-      os << "(write _ _)";
+      os << "(write Index Element)";
       break;
     default:
       Unhandled(k);

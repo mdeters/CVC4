@@ -263,7 +263,7 @@ CRef Solver::reason(Var x) {
 
     // Construct the reason
     CRef real_reason = ca.alloc(explLevel, explanation, true);
-    PROOF (ProofManager::getSatProof()->registerClause(real_reason, THEORY_PROPAGATION, uint64_t(-1)); );
+    PROOF (ProofManager::getSatProof()->registerClause(real_reason, THEORY_LEMMA, (uint64_t(RULE_CONFLICT) << 32)); );
     vardata[x] = VarData(real_reason, level(x), user_level(x), intro_level(x), trail_index(x));
     clauses_removable.push(real_reason);
     attachClause(real_reason);

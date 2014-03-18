@@ -2484,7 +2484,7 @@ void TheoryArrays::dischargeLemmas()
 
     Trace("arrays-lem")<<"Arrays::addRowLemma adding "<<lem<<"\n";
     d_RowAlreadyAdded.insert(l);
-    d_out->lemma(lem);
+    d_out->lemma(lem, RULE_ARRAYS_ROW);
     ++d_numRow;
   }
 }

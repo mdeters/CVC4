@@ -74,7 +74,6 @@ typedef int ClauseId;
 enum ClauseKind {
   INPUT,
   THEORY_LEMMA,
-  THEORY_PROPAGATION,
   LEARNT
 };/* enum ClauseKind */
 
@@ -87,6 +86,7 @@ enum ProofRule {
   RULE_CONFLICT,    /* re-construct as a conflict */
 
   RULE_ARRAYS_EXT,  /* arrays, extensional */
+  RULE_ARRAYS_ROW,  /* arrays, read-over-write */
 };/* enum ProofRules */
 
 class ProofManager {
