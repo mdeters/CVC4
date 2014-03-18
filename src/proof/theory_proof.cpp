@@ -132,7 +132,8 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
   case kind::EQUAL:
     os << "(";
     os << "= ";
-    os << term[0].getType() << " ";
+    printSort(term[0].getType(), os);
+    os << " ";
     printTerm(term[0], os);
     os << " ";
     printTerm(term[1], os);
@@ -141,7 +142,8 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
 
   case kind::DISTINCT:
     os << "(not (= ";
-    os << term[0].getType() << " ";
+    printSort(term[0].getType(), os);
+    os << " ";
     printTerm(term[0], os);
     os << " ";
     printTerm(term[1], os);

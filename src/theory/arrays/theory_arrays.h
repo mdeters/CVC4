@@ -183,7 +183,10 @@ class TheoryArrays : public Theory {
   bool propagate(TNode literal);
 
   /** Explain why this literal is true by adding assumptions */
-  void explain(TNode literal, std::vector<TNode>& assumptions);
+  void explain(TNode literal, std::vector<TNode>& assumptions, eq::EqProof* pf);
+
+  /** Explain a literal, with proof (if non-NULL). */
+  Node explain(TNode literal, eq::EqProof* pf);
 
   /** For debugging only- checks invariants about when things are preregistered*/
   context::CDHashSet<Node, NodeHashFunction > d_isPreRegistered;

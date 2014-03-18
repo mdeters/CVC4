@@ -20,6 +20,7 @@
 #define __CVC4__PROOF_MANAGER_H
 
 #include <iostream>
+#include <map>
 #include "proof/proof.h"
 #include "util/proof.h"
 #include "expr/node.h"
@@ -64,6 +65,7 @@ enum ProofFormat {
 std::string append(const std::string& str, uint64_t num);
 
 typedef __gnu_cxx::hash_map < ClauseId, const prop::SatClause* > IdToClause;
+typedef std::map < ClauseId, const prop::SatClause* > OrderedIdToClause;
 typedef __gnu_cxx::hash_set<prop::SatVariable > VarSet;
 typedef __gnu_cxx::hash_set<Expr, ExprHashFunction > ExprSet;
 
@@ -72,6 +74,7 @@ typedef int ClauseId;
 enum ClauseKind {
   INPUT,
   THEORY_LEMMA,
+  THEORY_PROPAGATION,
   LEARNT
 };/* enum ClauseKind */
 
@@ -93,9 +96,10 @@ class ProofManager {
 
   // information that will need to be shared across proofs
   IdToClause d_inputClauses;
-  IdToClause d_theoryConflicts;
+  OrderedIdToClause d_theoryLemmas;
+  IdToClause d_theoryPropagations;
   ExprSet    d_inputFormulas;
-  VarSet     d_propVars;
+  //VarSet     d_propVars;
 
   Proof* d_fullProof;
   ProofFormat d_format; // used for now only in debug builds
@@ -123,6 +127,7 @@ public:
 
   // iterators over data shared by proofs
   typedef IdToClause::const_iterator clause_iterator;
+  typedef OrderedIdToClause::const_iterator ordered_clause_iterator;
   typedef ExprSet::const_iterator assertions_iterator;
   typedef VarSet::const_iterator var_iterator;
 
@@ -130,17 +135,17 @@ public:
   clause_iterator end_input_clauses() const { return d_inputClauses.end(); }
   size_t num_input_clauses() const { return d_inputClauses.size(); }
 
-  clause_iterator begin_tconflicts() const { return d_theoryConflicts.begin(); }
-  clause_iterator end_tconflicts() const { return d_theoryConflicts.end(); }
-  size_t num_tconflicts() const { return d_theoryConflicts.size(); }
+  ordered_clause_iterator begin_lemmas() const { return d_theoryLemmas.begin(); }
+  ordered_clause_iterator end_lemmas() const { return d_theoryLemmas.end(); }
+  size_t num_lemmas() const { return d_theoryLemmas.size(); }
 
   assertions_iterator begin_assertions() const { return d_inputFormulas.begin(); }
   assertions_iterator end_assertions() const { return d_inputFormulas.end(); }
   size_t num_assertions() const { return d_inputFormulas.size(); }
 
-  var_iterator begin_vars() const { return d_propVars.begin(); }
-  var_iterator end_vars() const { return d_propVars.end(); }
-  size_t num_vars() const { return d_propVars.size(); }
+  //var_iterator begin_vars() const { return d_propVars.begin(); }
+  //var_iterator end_vars() const { return d_propVars.end(); }
+  //size_t num_vars() const { return d_propVars.size(); }
 
   void printProof(std::ostream& os, TNode n);
 
@@ -151,6 +156,7 @@ public:
 
   // variable prefixes
   static std::string getInputClauseName(ClauseId id);
+  static std::string getLemmaName(ClauseId id);
   static std::string getLemmaClauseName(ClauseId id);
   static std::string getLearntClauseName(ClauseId id);
 

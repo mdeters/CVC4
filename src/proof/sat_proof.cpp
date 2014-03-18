@@ -170,6 +170,7 @@ SatProof::SatProof(Minisat::Solver* solver, bool checkRes) :
     d_deleted(),
     d_inputClauses(),
     d_lemmaClauses(),
+    d_theoryPropagations(),
     d_resChains(),
     d_resStack(),
     d_checkRes(checkRes),
@@ -311,10 +312,13 @@ bool SatProof::isInputClause(ClauseId id) {
   return (d_inputClauses.find(id) != d_inputClauses.end());
 }
 
+bool SatProof::isTheoryPropagation(ClauseId id) {
+  return (d_theoryPropagations.find(id) != d_theoryPropagations.end());
+}
+
 bool SatProof::isLemmaClause(ClauseId id) {
   return (d_lemmaClauses.find(id) != d_lemmaClauses.end());
 }
-
 
 void SatProof::print(ClauseId id) {
   if (d_deleted.find(id) != d_deleted.end()) {
@@ -371,12 +375,16 @@ ClauseId SatProof::registerClause(::Minisat::CRef clause, ClauseKind kind, uint6
       Assert(d_inputClauses.find(newId) == d_inputClauses.end());
       d_inputClauses.insert(newId);
     }
+    if (kind == THEORY_PROPAGATION) {
+      Assert(d_theoryPropagations.find(newId) == d_theoryPropagations.end());
+      d_theoryPropagations.insert(newId);
+    }
     if (kind == THEORY_LEMMA) {
       Assert(d_lemmaClauses.find(newId) == d_lemmaClauses.end());
       d_lemmaClauses[newId] = proof_id;
     }
   }
-  Debug("proof:sat:detailed") << "registerClause CRef:" << clause << " id:" << d_clauseId[clause] << " " << kind << "\n";
+  Debug("proof:sat:detailed") << "registerClause CRef:" << clause << " id:" << d_clauseId[clause] << " " << kind << " " << int32_t(proof_id & 0xffffffff) << "\n";
   return d_clauseId[clause];
 }
 
@@ -688,6 +696,9 @@ void SatProof::collectClauses(ClauseId id) {
   if (d_seenInput.find(id) != d_seenInput.end()) {
     return;
   }
+  if (d_seenTheoryPropagations.find(id) != d_seenTheoryPropagations.end()) {
+    return;
+  }
   if (d_seenLemmas.find(id) != d_seenLemmas.end()) {
     return;
   }
@@ -699,6 +710,10 @@ void SatProof::collectClauses(ClauseId id) {
   } else if (isLemmaClause(id)) {
     addToProofManager(id, THEORY_LEMMA);
     d_seenLemmas.insert(id);
+    return;
+  } else if (isTheoryPropagation(id)) {
+    addToProofManager(id, THEORY_PROPAGATION);
+    d_seenTheoryPropagations.insert(id);
     return;
   } else {
     d_seenLearnt.insert(id);

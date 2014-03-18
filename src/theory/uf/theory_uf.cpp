@@ -501,9 +501,6 @@ void TheoryUF::conflict(TNode a, TNode b) {
   } else {
     d_conflictNode = explain(a.eqNode(b), pf);
   }
-  if(pf) {
-    pf->debug_print("uf-pf");
-  }
   d_out->conflict(d_conflictNode, pf);
   d_conflict = true;
 }

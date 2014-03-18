@@ -62,8 +62,8 @@ ProofManager::~ProofManager() {
     delete it->second;
   }
 
-  for(IdToClause::iterator it = d_theoryConflicts.begin();
-      it != d_theoryConflicts.end();
+  for(OrderedIdToClause::iterator it = d_theoryLemmas.begin();
+      it != d_theoryLemmas.end();
       ++it) {
     delete it->second;
   }
@@ -123,11 +123,12 @@ void ProofManager::initTheoryProof() {
 }
 
 std::string ProofManager::getInputClauseName(ClauseId id) { return append("pb", id); }
-std::string ProofManager::getLemmaClauseName(ClauseId id) { return append("lem", id); }
+std::string ProofManager::getLemmaName(ClauseId id) { return append("lem", id); }
+std::string ProofManager::getLemmaClauseName(ClauseId id) { return append("lemc", id); }
 std::string ProofManager::getLearntClauseName(ClauseId id) { return append("cl", id); }
-std::string ProofManager::getVarName(prop::SatVariable var) { return append("v", var); }
-std::string ProofManager::getAtomName(prop::SatVariable var) { return append("a", var); }
-std::string ProofManager::getLitName(prop::SatLiteral lit) { return append("l", lit.toInt()); }
+std::string ProofManager::getVarName(prop::SatVariable var) { return append("var", var); }
+std::string ProofManager::getAtomName(prop::SatVariable var) { return append("atom", var); }
+std::string ProofManager::getLitName(prop::SatLiteral lit) { return append("lit", lit.toInt()); }
 
 std::string ProofManager::getAtomName(TNode atom) {
   prop::SatLiteral lit = currentPM()->d_cnfProof->getLiteral(atom);
@@ -147,6 +148,7 @@ public:
   ProofOutputChannel() : d_conflict(), d_proof(NULL) {}
 
   void conflict(TNode n, Proof* pf) throw() {
+    Debug("mgd") << "; CONFLICT: " << n << std::endl;
     Assert(d_conflict.isNull());
     Assert(!n.isNull());
     d_conflict = n;
@@ -155,7 +157,7 @@ public:
   }
   bool propagate(TNode x) throw() {
     Debug("mgd") << "got a propagation: " << x << std::endl;
-    return false;
+    return true;
   }
   theory::LemmaStatus lemma(TNode n, ProofRule rule, bool, bool) throw() {
     //AlwaysAssert(false);
@@ -167,8 +169,9 @@ public:
     AlwaysAssert(false);
     return theory::LemmaStatus(TNode::null(), 0);
   }
-  void requirePhase(TNode, bool) throw() {
-    AlwaysAssert(false);
+  void requirePhase(TNode n, bool b) throw() {
+    Debug("mgd") << "requirePhase " << n << " " << b << std::endl;
+    //AlwaysAssert(false);
   }
   bool flipDecision() throw() {
     AlwaysAssert(false);
@@ -202,7 +205,7 @@ public:
    */
   void visit(TNode current, TNode parent) {
     if(theory::Theory::theoryOf(current) == d_theory->getId()) {
-      Debug("mgd") << "preregister " << current << std::endl;
+      //Debug("mgd") << "preregister " << current << std::endl;
       d_theory->preRegisterTerm(current);
       d_visited.insert(current);
     }
@@ -228,7 +231,7 @@ void ProofManager::printProof(std::ostream& os, TNode n) {
   uf.produceProofs();
   MyPreRegisterVisitor preRegVisitor(&uf);
   for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
-    Debug("mgd") << "preregistering and asserting " << *i << std::endl;
+    Debug("mgd") << "preregistering and asserting " << (*i).negate() << std::endl;
     NodeVisitor<MyPreRegisterVisitor>::run(preRegVisitor, *i);
     uf.assertFact(*i, false);
   }
@@ -250,16 +253,18 @@ Debug("mgd") << "]]" << std::endl;
 }
 
 void ProofManager::addClause(ClauseId id, const prop::SatClause* clause, ClauseKind kind) {
-  for (unsigned i = 0; i < clause->size(); ++i) {
+  /*for (unsigned i = 0; i < clause->size(); ++i) {
     prop::SatLiteral lit = clause->operator[](i);
     d_propVars.insert(lit.getSatVariable());
-  }
+  }*/
   if (kind == INPUT) {
     d_inputClauses.insert(std::make_pair(id, clause));
-    return;
+  } else if(kind == THEORY_LEMMA) {
+    d_theoryLemmas.insert(std::make_pair(id, clause));
+  } else {
+    Assert(kind == THEORY_PROPAGATION);
+    d_theoryPropagations.insert(std::make_pair(id, clause));
   }
-  Assert (kind == THEORY_LEMMA);
-  d_theoryConflicts.insert(std::make_pair(id, clause));
 }
 
 void ProofManager::addAssertion(Expr formula) {
@@ -287,15 +292,14 @@ void LFSCProof::toStream(std::ostream& out) {
   if (d_theoryProof == NULL) {
     d_theoryProof = new LFSCTheoryProof();
   }
-  for(LFSCCnfProof::iterator i = d_cnfProof->begin_atom_mapping();
+  /*for(LFSCCnfProof::iterator i = d_cnfProof->begin_atom_mapping();
       i != d_cnfProof->end_atom_mapping();
       ++i) {
     d_theoryProof->addDeclaration(*i);
-  }
+  }*/
   d_theoryProof->printAssertions(out, paren);
   out << " ;; Proof of empty clause follows\n";
   out << "(: (holds cln)\n";
-  d_cnfProof->printAtomMapping(out, paren);
   d_cnfProof->printClauses(out, paren);
   d_satProof->printResolutions(out, paren);
   paren <<")))\n;;";

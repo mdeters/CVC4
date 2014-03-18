@@ -136,7 +136,8 @@ private:
   /**
    * Explain why this literal is true by adding assumptions
    */
-  void explain(TNode literal, std::vector<TNode>& assumptions, eq::EqProof* pf = NULL);
+  void explain(TNode literal, std::vector<TNode>& assumptions, eq::EqProof* pf);
+
   /**
    * Explain a literal, with proof (if "pf" is non-NULL).
    */

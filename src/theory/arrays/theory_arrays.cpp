@@ -370,20 +370,22 @@ bool TheoryArrays::propagate(TNode literal)
 }/* TheoryArrays::propagate(TNode) */
 
 
-void TheoryArrays::explain(TNode literal, std::vector<TNode>& assumptions) {
+void TheoryArrays::explain(TNode literal, std::vector<TNode>& assumptions, eq::EqProof* pf) {
   // Do the work
   bool polarity = literal.getKind() != kind::NOT;
   TNode atom = polarity ? literal : literal[0];
-  //eq::EqProof * eqp = new eq::EqProof;
-  eq::EqProof * eqp = NULL;
-  if (atom.getKind() == kind::EQUAL || atom.getKind() == kind::IFF) {
-    d_equalityEngine.explainEquality(atom[0], atom[1], polarity, assumptions, eqp);
-  } else {
-    d_equalityEngine.explainPredicate(atom, polarity, assumptions);
+  if(pf) {
+    Debug("mgdx") << "explaining " << literal << std::endl;
   }
-  if( eqp ){
-    Debug("array-pf") << " Proof is : " << std::endl;
-    eqp->debug_print("array-pf");
+  if (atom.getKind() == kind::EQUAL || atom.getKind() == kind::IFF) {
+    d_equalityEngine.explainEquality(atom[0], atom[1], polarity, assumptions, pf);
+  } else {
+    d_equalityEngine.explainPredicate(atom, polarity, assumptions, pf);
+  }
+  if(pf) {
+    Debug("mgdx") << "explained " << literal << ", got:" << std::endl;
+    pf->debug_print("mgdx");
+    Debug("mgdx") << "\n";
   }
 }
 
@@ -532,10 +534,15 @@ void TheoryArrays::propagate(Effort e)
 
 Node TheoryArrays::explain(TNode literal)
 {
+  return explain(literal, NULL);
+}
+
+Node TheoryArrays::explain(TNode literal, eq::EqProof* pf)
+{
   ++d_numExplain;
   Debug("arrays") << spaces(getSatContext()->getLevel()) << "TheoryArrays::explain(" << literal << ")" << std::endl;
   std::vector<TNode> assumptions;
-  explain(literal, assumptions);
+  explain(literal, assumptions, pf);
   return mkAnd(assumptions);
 }
 
@@ -2483,13 +2490,14 @@ void TheoryArrays::dischargeLemmas()
 }
 
 void TheoryArrays::conflict(TNode a, TNode b) {
+  eq::EqProof* pf = d_proofsEnabled ? new eq::EqProof() : NULL;
   if (a.getKind() == kind::CONST_BOOLEAN) {
-    d_conflictNode = explain(a.iffNode(b));
+    d_conflictNode = explain(a.iffNode(b), pf);
   } else {
-    d_conflictNode = explain(a.eqNode(b));
+    d_conflictNode = explain(a.eqNode(b), pf);
   }
   if (!d_inCheckModel) {
-    d_out->conflict(d_conflictNode);
+    d_out->conflict(d_conflictNode, pf);
   }
   d_conflict = true;
 }

@@ -72,7 +72,7 @@ enum MergeReasonType {
   MERGED_THROUGH_TRANS,
 
   /** Theory specific proof rules */
-  MERGED_ARRAYS_ROW,
+  MERGED_ARRAYS_ROW = 10,
   MERGED_ARRAYS_ROW1,
 };/* enum MergeReasonType */
 

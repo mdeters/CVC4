@@ -74,6 +74,7 @@ void CnfStream::assertClause(TNode node, SatClause& c) {
       Dump("clauses") << AssertCommand(Expr(n.toExpr()));
     }
   }
+  Assert(d_proofId != uint64_t(-1));
   d_satSolver->addClause(c, d_removable, d_proofId);
 }
 
@@ -654,6 +655,7 @@ void TseitinCnfStream::convertAndAssert(TNode node, bool removable, bool negated
     Assert((uint64_t(proof_id) & 0xffffffff00000000) == 0 && (assertionTableIndex & 0xffffffff00000000) == 0, "proof_id/table_index collision");
     d_proofId = assertionTableIndex | (uint64_t(proof_id) << 32);
     d_assertionTable.push_back(from.isNull() ? node : from);
+    Debug("mgd") << "cnf ix " << assertionTableIndex << " asst " << node << "  proof_id " << proof_id << " from " << from << endl;
   } else {
     // We aren't producing proofs or unsat cores; use an invalid proof id.
     d_proofId = uint64_t(-1);

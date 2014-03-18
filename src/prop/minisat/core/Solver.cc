@@ -263,7 +263,7 @@ CRef Solver::reason(Var x) {
 
     // Construct the reason
     CRef real_reason = ca.alloc(explLevel, explanation, true);
-    PROOF (ProofManager::getSatProof()->registerClause(real_reason, THEORY_LEMMA, uint64_t(-1)); );
+    PROOF (ProofManager::getSatProof()->registerClause(real_reason, THEORY_PROPAGATION, uint64_t(-1)); );
     vardata[x] = VarData(real_reason, level(x), user_level(x), intro_level(x), trail_index(x));
     clauses_removable.push(real_reason);
     attachClause(real_reason);
@@ -321,6 +321,7 @@ bool Solver::addClause_(vec<Lit>& ps, bool removable, uint64_t proof_id)
       lemmas.push();
       ps.copyTo(lemmas.last());
       lemmas_removable.push(removable);
+      Debug("mgd") << "lemma push " << proof_id << " " << (proof_id & 0xffffffff) << std::endl;
       lemmas_proof_id.push(proof_id);
     } else {
       // If all false, we're in conflict
@@ -1647,6 +1648,7 @@ CRef Solver::updateLemmas() {
     vec<Lit>& lemma = lemmas[i];
     bool removable = lemmas_removable[i];
     uint64_t proof_id = lemmas_proof_id[i];
+    Debug("mgd") << "pulled lemma proof id " << proof_id << " " << (proof_id & 0xffffffff) << std::endl;
 
     // Attach it if non-unit
     CRef lemma_ref = CRef_Undef;

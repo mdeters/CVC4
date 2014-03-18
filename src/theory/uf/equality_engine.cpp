@@ -1128,12 +1128,12 @@ Debug("mgdx") << "t1id is " << d_nodes[t1Id] << " t2id is " << d_nodes[t2Id] << 
               Debug("equality") << d_name << "::eq::getExplanation(): adding: " << d_equalityEdges[currentEdge].getReason() << std::endl;
               if(eqpc) {
                 if(reasonType == MERGED_THROUGH_EQUALITY) {
-                  eqpc->d_node = d_equalityEdges[currentEdge].getReason();
+                  //eqpc->d_node = d_equalityEdges[currentEdge].getReason();
                 } else {
                   // theory-specific proof rule : TODO
-                  eqpc->d_id = reasonType;
                   //eqpc->d_node = d_equalityEdges[currentEdge].getNodeId();
                 }
+                //eqpc->d_id = reasonType;
                 eqpc->d_node = d_equalityEdges[currentEdge].getReason();
               }
               equalities.push_back(d_equalityEdges[currentEdge].getReason());
@@ -2152,6 +2152,8 @@ inline static bool match(TNode n1, TNode n2) {
 
 static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned tb) {
   if(tb == 0) {
+Debug("mgdx") << "top pf id is " << pf->d_id << std::endl;
+pf->debug_print("mgdx");
     Assert(pf->d_id == MERGED_THROUGH_TRANS);
     Assert(!pf->d_node.isNull());
     Assert(pf->d_children.size() >= 2);

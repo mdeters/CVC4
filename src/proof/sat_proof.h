@@ -119,6 +119,7 @@ protected:
   IdHashSet           d_inputClauses;
 public:
   IdProofRuleMap      d_lemmaClauses;
+  IdHashSet           d_theoryPropagations;
 protected:
   // resolutions
   IdResMap            d_resChains;
@@ -146,7 +147,9 @@ protected:
   void printRes(ResChain* res);
 
   bool isInputClause(ClauseId id);
+  bool isTheoryConflict(ClauseId id);
   bool isLemmaClause(ClauseId id);
+  bool isTheoryPropagation(ClauseId id);
   bool isUnit(ClauseId id);
   bool isUnit(::Minisat::Lit lit);
   bool hasResolution(ClauseId id);
@@ -244,6 +247,8 @@ public:
 protected:
   IdSet              d_seenLearnt;
   IdHashSet          d_seenInput;
+  IdHashSet          d_seenTheoryPropagations;
+  IdHashSet          d_seenTheoryConflicts;
   IdHashSet          d_seenLemmas;
 
   inline std::string varName(::Minisat::Lit lit);
