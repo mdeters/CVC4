@@ -88,7 +88,9 @@ inline static std::string sanitize(Type s) {
 
 void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
   if (term.isVariable()) {
-    if(term.getType().isBoolean()) {
+    if(ProofManager::currentPM()->hasOp(Node::fromExpr(term))) {
+      printTerm(ProofManager::currentPM()->lookupOp(Node::fromExpr(term)).toExpr(), os);
+    } else if(term.getType().isBoolean()) {
       os << "(p_app " << sanitize(term) << ")";
     } else {
       os << sanitize(term);
@@ -235,8 +237,23 @@ void LFSCTheoryProof::printTerm(Expr term, std::ostream& os) {
     os << ")";
     return;
 
+  case kind::BUILTIN:
+    switch(k = term.getConst<Kind>()) {
+    case kind::SELECT:
+      os << "(read _ _)";
+      break;
+    case kind::STORE:
+      os << "(write _ _)";
+      break;
+    default:
+      Unhandled(k);
+    }
+    return;
+
   default:
+    Debug("mgdx") << "unhandled partial operator application? " << k << std::endl << term << std::endl;
     Unhandled(k);
+    return;
   }
 
   Unreachable();

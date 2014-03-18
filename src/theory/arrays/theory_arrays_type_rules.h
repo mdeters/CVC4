@@ -29,15 +29,17 @@ namespace arrays {
 struct ArraySelectTypeRule {
   inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)
     throw (TypeCheckingExceptionPrivate, AssertionException) {
-    Assert(n.getKind() == kind::SELECT);
+    Assert(n.getKind() == kind::SELECT || n.getKind() == kind::PARTIAL_SELECT);
     TypeNode arrayType = n[0].getType(check);
     if( check ) {
       if(!arrayType.isArray()) {
         throw TypeCheckingExceptionPrivate(n, "array select operating on non-array");
       }
-      TypeNode indexType = n[1].getType(check);
-      if(!indexType.isComparableTo(arrayType.getArrayIndexType())){
-        throw TypeCheckingExceptionPrivate(n, "array select not indexed with correct type for array");
+      if(n.getNumChildren() > 1) {
+        TypeNode indexType = n[1].getType(check);
+        if(!indexType.isComparableTo(arrayType.getArrayIndexType())){
+          throw TypeCheckingExceptionPrivate(n, "array select not indexed with correct type for array");
+        }
       }
     }
     return arrayType.getArrayConstituentType();
@@ -47,21 +49,25 @@ struct ArraySelectTypeRule {
 struct ArrayStoreTypeRule {
   inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)
     throw (TypeCheckingExceptionPrivate, AssertionException) {
-    if (n.getKind() == kind::STORE) {
+    if (n.getKind() == kind::STORE || n.getKind() == kind::PARTIAL_STORE) {
       TypeNode arrayType = n[0].getType(check);
       if( check ) {
         if(!arrayType.isArray()) {
           throw TypeCheckingExceptionPrivate(n, "array store operating on non-array");
         }
-        TypeNode indexType = n[1].getType(check);
-        TypeNode valueType = n[2].getType(check);
-        if(!indexType.isComparableTo(arrayType.getArrayIndexType())){
-          throw TypeCheckingExceptionPrivate(n, "array store not indexed with correct type for array");
-        }
-        if(!valueType.isComparableTo(arrayType.getArrayConstituentType())){
-          Debug("array-types") << "array type: "<< arrayType.getArrayConstituentType() << std::endl;
-          Debug("array-types") << "value types: " << valueType << std::endl;
-          throw TypeCheckingExceptionPrivate(n, "array store not assigned with correct type for array");
+        if(n.getNumChildren() > 1) {
+          TypeNode indexType = n[1].getType(check);
+          if(!indexType.isComparableTo(arrayType.getArrayIndexType())){
+            throw TypeCheckingExceptionPrivate(n, "array store not indexed with correct type for array");
+          }
+          if(n.getNumChildren() > 2) {
+            TypeNode valueType = n[2].getType(check);
+            if(!valueType.isComparableTo(arrayType.getArrayConstituentType())){
+              Debug("array-types") << "array type: "<< arrayType.getArrayConstituentType() << std::endl;
+              Debug("array-types") << "value types: " << valueType << std::endl;
+              throw TypeCheckingExceptionPrivate(n, "array store not assigned with correct type for array");
+            }
+          }
         }
       }
       return arrayType;

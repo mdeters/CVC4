@@ -29,7 +29,7 @@
               (! t3 (term s2)
               	(th_holds (= _ (apply _ _ (apply _ _ (read s1 s2) (apply _ _ (apply _ _ (apply _ _ (write s1 s2) t1) t2) t3)) t2)
               		       t3))))))))
-              	
+
 
 (declare row (! s1 sort
              (! s2 sort

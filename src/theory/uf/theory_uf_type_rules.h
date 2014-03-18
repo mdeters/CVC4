@@ -23,6 +23,14 @@ namespace CVC4 {
 namespace theory {
 namespace uf {
 
+class PartialTypeRule {
+public:
+  inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)
+      throw (TypeCheckingExceptionPrivate, AssertionException) {
+    return n.getOperator().getType().getRangeType();
+  }
+};
+
 class UfTypeRule {
 public:
   inline static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check)

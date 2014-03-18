@@ -106,6 +106,9 @@ class ProofManager {
 
   int d_nextId;
 
+  std::map<Node, Node> d_ops;
+  std::map<Node, Node> d_bops;
+
 protected:
   LogicInfo d_logic;
 
@@ -143,9 +146,9 @@ public:
   assertions_iterator end_assertions() const { return d_inputFormulas.end(); }
   size_t num_assertions() const { return d_inputFormulas.size(); }
 
-  //var_iterator begin_vars() const { return d_propVars.begin(); }
-  //var_iterator end_vars() const { return d_propVars.end(); }
-  //size_t num_vars() const { return d_propVars.size(); }
+  Node mkOp(TNode n);
+  Node lookupOp(TNode n) const;
+  bool hasOp(TNode n) const;
 
   void printProof(std::ostream& os, TNode n);
 

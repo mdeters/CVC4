@@ -31,6 +31,11 @@ operator SELECT 2 "array select; first parameter is an array term, second is the
 # store a i e  is  a[i] <= e
 operator STORE 3 "array store; first parameter is an array term, second is the store index, third is the term to store at the index"
 
+operator PARTIAL_SELECT 1 "partial application of array select"
+typerule PARTIAL_SELECT ::CVC4::theory::arrays::ArraySelectTypeRule
+operator PARTIAL_STORE 1:2 "partial application of array store"
+typerule PARTIAL_STORE ::CVC4::theory::arrays::ArrayStoreTypeRule
+
 # storeall t e  is  \all i in indexType(t) <= e
 constant STORE_ALL \
     ::CVC4::ArrayStoreAll \

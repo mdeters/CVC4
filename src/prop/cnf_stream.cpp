@@ -74,7 +74,6 @@ void CnfStream::assertClause(TNode node, SatClause& c) {
       Dump("clauses") << AssertCommand(Expr(n.toExpr()));
     }
   }
-  Assert(d_proofId != uint64_t(-1));
   d_satSolver->addClause(c, d_removable, d_proofId);
 }
 

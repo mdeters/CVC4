@@ -962,7 +962,7 @@ void EqualityEngine::getExplanation(EqualityNodeId t1Id, EqualityNodeId t2Id, st
   // If the nodes are the same, we're done
   if (t1Id == t2Id){
     if(eqp) {
-      eqp->d_node = d_nodes[t1Id];
+      eqp->d_node = ProofManager::currentPM()->mkOp(d_nodes[t1Id]);
     }
     return;
   }
@@ -1045,10 +1045,12 @@ Debug("equality") << "made child proof " << reasonType << std::endl;
 Debug("mgdx") << "HRRM, so " << f1.a << " / " << f2.a << "\n";
 Debug("mgdx") << "HRRM, so " << d_nodes[f1.a] << " / " << d_nodes[f2.a] << "\n"
               << "         " << d_nodes[f1.b] << " / " << d_nodes[f2.b] << "\n";
-                if(d_nodes[f1.a].getKind() == kind::APPLY_UF) {
+                if(d_nodes[f1.a].getKind() == kind::APPLY_UF ||
+                   d_nodes[f1.a].getKind() == kind::SELECT ||
+                   d_nodes[f1.a].getKind() == kind::STORE) {
                   eqpc->d_node = d_nodes[f1.a];
                 } else {
-                  eqpc->d_node = NodeManager::currentNM()->mkNode(kind::PARTIAL_APPLY_UF, d_nodes[f1.a], d_nodes[f1.b]);
+                  eqpc->d_node = NodeManager::currentNM()->mkNode(kind::PARTIAL_APPLY_UF, ProofManager::currentPM()->mkOp(d_nodes[f1.a]), d_nodes[f1.b]);
                 }
                 std::stringstream ss, ss2;
 #ifdef CVC4_DEBUG
@@ -1128,13 +1130,13 @@ Debug("mgdx") << "t1id is " << d_nodes[t1Id] << " t2id is " << d_nodes[t2Id] << 
               Debug("equality") << d_name << "::eq::getExplanation(): adding: " << d_equalityEdges[currentEdge].getReason() << std::endl;
               if(eqpc) {
                 if(reasonType == MERGED_THROUGH_EQUALITY) {
-                  //eqpc->d_node = d_equalityEdges[currentEdge].getReason();
+                  eqpc->d_node = d_equalityEdges[currentEdge].getReason();
                 } else {
                   // theory-specific proof rule : TODO
-                  //eqpc->d_node = d_equalityEdges[currentEdge].getNodeId();
+                  eqpc->d_node = d_nodes[d_equalityEdges[currentEdge].getNodeId()].eqNode(d_nodes[currentNode]);
+                  Debug("mgd") << "theory eq : " << eqpc->d_node << std::endl;
                 }
-                //eqpc->d_id = reasonType;
-                eqpc->d_node = d_equalityEdges[currentEdge].getReason();
+                eqpc->d_id = reasonType;
               }
               equalities.push_back(d_equalityEdges[currentEdge].getReason());
               break;
@@ -2128,10 +2130,10 @@ inline static Node eqNode(TNode n1, TNode n2) {
   return NodeManager::currentNM()->mkNode(n1.getType().isBoolean() ? kind::IFF : kind::EQUAL, n1, n2);
 }
 
-// congrence matching term helper
+// congruence matching term helper
 inline static bool match(TNode n1, TNode n2) {
   if(n1.getKind() != kind::PARTIAL_APPLY_UF && n1.getKind() != kind::APPLY_UF) {
-    return n1 == n2.getOperator();
+    return n1.getKind() == n2.getKind() || n1 == n2.getOperator();
   }
   if(n2.getKind() != kind::PARTIAL_APPLY_UF && n2.getKind() != kind::APPLY_UF) {
     return n2 == n1.getOperator();
@@ -2152,8 +2154,6 @@ inline static bool match(TNode n1, TNode n2) {
 
 static Node toStreamRecLFSC(std::ostream& out, const eq::EqProof* pf, unsigned tb) {
   if(tb == 0) {
-Debug("mgdx") << "top pf id is " << pf->d_id << std::endl;
-pf->debug_print("mgdx");
     Assert(pf->d_id == MERGED_THROUGH_TRANS);
     Assert(!pf->d_node.isNull());
     Assert(pf->d_children.size() >= 2);
@@ -2211,7 +2211,7 @@ Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << "
     std::stack<const EqProof*> stk;
     for(const EqProof* pf2 = pf; pf2->d_id == MERGED_THROUGH_CONGRUENCE; pf2 = pf2->d_children[0]) {
       Assert(!pf2->d_node.isNull());
-      Assert(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF || pf2->d_node.getKind() == kind::APPLY_UF);
+      Assert(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF || pf2->d_node.getKind() == kind::APPLY_UF || pf2->d_node.getKind() == kind::SELECT || pf2->d_node.getKind() == kind::STORE);
       Assert(pf2->d_children.size() == 2);
       out << "(cong _ _ _ _ _ _ ";
       stk.push(pf2);
@@ -2304,8 +2304,12 @@ Debug("mgd") << "at end assert, got " << pf2->d_node << "  and  " << n1 << std::
       Assert(n1 == pf2->d_node);
     }
     if(n1.getOperator().getType().getNumChildren() == n1.getNumChildren() + 1) {
-      b1.clear(kind::APPLY_UF);
-      b1 << n1.getOperator();
+      if(ProofManager::currentPM()->hasOp(n1.getOperator())) {
+        b1.clear(ProofManager::currentPM()->lookupOp(n2.getOperator()).getConst<Kind>());
+      } else {
+        b1.clear(kind::APPLY_UF);
+        b1 << n1.getOperator();
+      }
       b1.append(n1.begin(), n1.end());
       n1 = b1;
 Debug("mgd") << "at[2] end assert, got " << pf2->d_node << "  and  " << n1 << std::endl;
@@ -2314,8 +2318,12 @@ Debug("mgd") << "at[2] end assert, got " << pf2->d_node << "  and  " << n1 << st
       }
     }
     if(n2.getOperator().getType().getNumChildren() == n2.getNumChildren() + 1) {
-      b2.clear(kind::APPLY_UF);
-      b2 << n2.getOperator();
+      if(ProofManager::currentPM()->hasOp(n2.getOperator())) {
+        b2.clear(ProofManager::currentPM()->lookupOp(n2.getOperator()).getConst<Kind>());
+      } else {
+        b2.clear(kind::APPLY_UF);
+        b2 << n2.getOperator();
+      }
       b2.append(n2.begin(), n2.end());
       n2 = b2;
     }
@@ -2439,8 +2447,44 @@ Debug("mgd") << "\n++ trans proof done, have proven " << n1 << std::endl;
     return n1;
   }
 
+  case MERGED_ARRAYS_ROW1: {
+    Debug("mgd") << "row1 lemma: " << pf->d_node << std::endl;
+    Assert(pf->d_node.getKind() == kind::EQUAL);
+    TNode t1, t2, t3;
+    Node ret;
+    if(pf->d_node[1].getKind() == kind::SELECT &&
+       pf->d_node[1][0].getKind() == kind::STORE &&
+       pf->d_node[1][0][1] == pf->d_node[1][1] &&
+       pf->d_node[1][0][2] == pf->d_node[0]) {
+      t1 = pf->d_node[1][0];
+      t2 = pf->d_node[1][1];
+      t3 = pf->d_node[0];
+      ret = pf->d_node[1].eqNode(pf->d_node[0]);
+    } else {
+      Assert(pf->d_node[0].getKind() == kind::SELECT &&
+             pf->d_node[0][0].getKind() == kind::STORE &&
+             pf->d_node[0][0][1] == pf->d_node[0][1] &&
+             pf->d_node[0][0][2] == pf->d_node[1]);
+      t1 = pf->d_node[0][0];
+      t2 = pf->d_node[0][1];
+      t3 = pf->d_node[1];
+      ret = pf->d_node;
+    }
+    out << "(row1 _ _ ";
+    LFSCTheoryProof::printTerm(t1.toExpr(), out);
+    out << " ";
+    LFSCTheoryProof::printTerm(t2.toExpr(), out);
+    out << " ";
+    LFSCTheoryProof::printTerm(t3.toExpr(), out);
+    out << ") ";
+    return ret;
+  }
+
   default:
-    Unhandled(pf->d_id);
+    Assert(!pf->d_node.isNull());
+    Assert(pf->d_children.empty());
+    Debug("mgd") << "theory proof: " << pf->d_node << " by rule " << int(pf->d_id) << std::endl;
+    return pf->d_node;
   }
 }
 

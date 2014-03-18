@@ -121,7 +121,7 @@ void LFSCCnfProof::printTheoryLemmas(std::ostream& os, std::ostream& paren) {
         TNode myk = cl[0][0][1];
         Debug("mgd") << "; so my skolemized k is " << myk << std::endl;
         os << "(ext _ _ " << orig[0][0] << " " << orig[0][1] << " (\\ " << myk << " (\\ " << ProofManager::getLemmaName(id) << "\n";
-        paren << "))";
+        paren << ")))";
       }
     }
     printAtomMapping(clause, os, paren);
