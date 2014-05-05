@@ -932,12 +932,27 @@ void EqualityEngine::explainPredicate(TNode p, bool polarity, std::vector<TNode>
   getExplanation(getNodeId(p), polarity ? d_trueId : d_falseId, assertions, eqp);
 }
 
-static bool isReflexivity(EqProof* pf) {
+static bool isReflexivity(const EqProof* pf) {
   if(pf->d_id == MERGED_THROUGH_REFLEXIVITY) {
     return true;
   }
   if(pf->d_id == MERGED_THROUGH_CONGRUENCE) {
     return isReflexivity(pf->d_children[0]) && isReflexivity(pf->d_children[1]);
+  }
+  if(pf->d_id == MERGED_THROUGH_TRANS) {
+    size_t n = pf->d_children.size() - 1;
+    if(n > 0) {
+      if(pf->d_children[n]->d_node[0] == pf->d_children[0]->d_node[0] ||
+         pf->d_children[n]->d_node[1] == pf->d_children[0]->d_node[0] ||
+         pf->d_children[n]->d_node[0] == pf->d_children[0]->d_node[1] ||
+         pf->d_children[n]->d_node[1] == pf->d_children[0]->d_node[1]) {
+        // fixme
+        Debug("mgdt") << "found transitive-reflexive proof:\n";
+        pf->debug_print("mgdt");
+        Debug("mgdt") << "\n";
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -1065,6 +1080,10 @@ eqpc1->debug_print("mgdx");
 Debug("mgdx") << "proof of right:" << std::endl << ss2.str() << std::endl;
 Debug("mgdx") << "t1id is " << t1Id << " t2id is " << t2Id << std::endl;
 Debug("mgdx") << "t1id is " << d_nodes[t1Id] << " t2id is " << d_nodes[t2Id] << std::endl;
+/*
+ Assert(proven1[0].getKind() != kind::SELECT && proven1[0].getKind() != kind::STORE &&
+       proven1[1].getKind() != kind::SELECT && proven1[1].getKind() != kind::STORE, "not functional kind??");
+*/
                 Node proven = toStreamRecLFSC(ss, eqpc, 2);
                 Assert(match(proven[0], eqpc->d_node) == match(eqpc->d_node, proven[0]));
                 Assert(match(proven[1], eqpc->d_node) == match(eqpc->d_node, proven[1]));
@@ -2133,14 +2152,32 @@ inline static Node eqNode(TNode n1, TNode n2) {
 // congruence matching term helper
 inline static bool match(TNode n1, TNode n2) {
   Debug("mgd") << "match " << n1 << " " << n2 << std::endl;
-  if(n1.getType().isFunction()) {
-    return n1 == n2.getOperator();
+  if(ProofManager::currentPM()->hasOp(n1)) {
+    n1 = ProofManager::currentPM()->lookupOp(n1);
   }
-  if(n2.getType().isFunction()) {
-    return n2 == n1.getOperator();
+  if(ProofManager::currentPM()->hasOp(n2)) {
+    n2 = ProofManager::currentPM()->lookupOp(n2);
+  }
+  Debug("mgd") << "+ match " << n1 << " " << n2 << std::endl;
+  if(n1 == n2) {
+    return true;
+  }
+  if(n1.getType().isFunction() && n2.hasOperator()) {
+    if(ProofManager::currentPM()->hasOp(n2.getOperator())) {
+      return n1 == ProofManager::currentPM()->lookupOp(n2.getOperator());
+    } else {
+      return n1 == n2.getOperator();
+    }
+  }
+  if(n2.getType().isFunction() && n1.hasOperator()) {
+    if(ProofManager::currentPM()->hasOp(n1.getOperator())) {
+      return n2 == ProofManager::currentPM()->lookupOp(n1.getOperator());
+    } else {
+      return n2 == n1.getOperator();
+    }
   }
 
-  if(n1.getOperator() != n2.getOperator()) {
+  if(n1.hasOperator() && n2.hasOperator() && n1.getOperator() != n2.getOperator()) {
     return false;
   }
 
@@ -2189,6 +2226,8 @@ Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << "
     out << "(clausify_false (contra _ ";
     Debug("mgdx") << "\nhave proven: " << n1 << std::endl;
     Debug("mgdx") << "n2 is " << n2[0] << std::endl;
+    Debug("mgdx") << "\nn2[0]: " << n2[0][0] << std::endl;
+    Debug("mgdx") << "n1[1]: " << n1[1] << std::endl;
     if(n2[0].getKind() == kind::APPLY_UF) {
       out << "(trans _ _ _ _ ";
       out << "(symm _ _ _ ";
@@ -2214,7 +2253,7 @@ Debug("mgdx") << "\nsubTrans unique child " << subTrans.d_children[0]->d_id << "
     std::stack<const EqProof*> stk;
     for(const EqProof* pf2 = pf; pf2->d_id == MERGED_THROUGH_CONGRUENCE; pf2 = pf2->d_children[0]) {
       Assert(!pf2->d_node.isNull());
-      Assert(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF || pf2->d_node.getKind() == kind::APPLY_UF || pf2->d_node.getKind() == kind::SELECT || pf2->d_node.getKind() == kind::STORE);
+      Assert(pf2->d_node.getKind() == kind::PARTIAL_APPLY_UF || pf2->d_node.getKind() == kind::BUILTIN || pf2->d_node.getKind() == kind::APPLY_UF || pf2->d_node.getKind() == kind::SELECT || pf2->d_node.getKind() == kind::STORE);
       Assert(pf2->d_children.size() == 2);
       out << "(cong _ _ _ _ _ _ ";
       stk.push(pf2);
@@ -2253,6 +2292,8 @@ pf2->d_children[0]->debug_print("mgd");
     if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF || n1[side].getKind() == kind::SELECT || n1[side].getKind() == kind::STORE) {
       if(n1[side].getKind() == kind::PARTIAL_APPLY_UF || n1[side].getKind() == kind::APPLY_UF) {
         b1 << n1[side].getOperator();
+      } else {
+        b1 << ProofManager::currentPM()->mkOp(n1[side].getOperator());
       }
       b1.append(n1[side].begin(), n1[side].end());
     } else {
@@ -2261,6 +2302,8 @@ pf2->d_children[0]->debug_print("mgd");
     if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF || n1[side].getKind() == kind::SELECT || n1[side].getKind() == kind::STORE) {
       if(n1[1-side].getKind() == kind::PARTIAL_APPLY_UF || n1[1-side].getKind() == kind::APPLY_UF) {
         b2 << n1[1-side].getOperator();
+      } else {
+        b2 << ProofManager::currentPM()->mkOp(n1[1-side].getOperator());
       }
       b2.append(n1[1-side].begin(), n1[1-side].end());
     } else {
@@ -2271,12 +2314,12 @@ pf2->d_children[0]->debug_print("mgd");
     Debug("mgd") << "n1 " << n1 << std::endl;
     Debug("mgd") << "n2 " << n2 << std::endl;
     Debug("mgd") << "side " << side << std::endl;
-    if(pf2->d_node[b1.getNumChildren()] == n2[side]) {
+    if(pf2->d_node[b1.getNumChildren() - (pf2->d_node.getMetaKind() == kind::metakind::PARAMETERIZED ? 0 : 1)] == n2[side]) {
       b1 << n2[side];
       b2 << n2[1-side];
       out << ss.str();
     } else {
-      Assert(pf2->d_node[b1.getNumChildren()] == n2[1-side]);
+      Assert(pf2->d_node[b1.getNumChildren() - (pf2->d_node.getMetaKind() == kind::metakind::PARAMETERIZED ? 0 : 1)] == n2[1-side]);
       b1 << n2[1-side];
       b2 << n2[side];
       out << "(symm _ _ _ " << ss.str() << ")";

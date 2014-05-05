@@ -287,6 +287,8 @@ void LFSCProof::toStream(std::ostream& out) {
   std::ostringstream paren;
   out << "(check\n";
   out << " ;; Declarations\n";
+  out << "(% Index sort\n";
+  out << "(% Element sort\n";
   if (d_theoryProof == NULL) {
     d_theoryProof = new LFSCTheoryProof();
   }
@@ -300,7 +302,7 @@ void LFSCProof::toStream(std::ostream& out) {
   out << "(: (holds cln)\n";
   d_cnfProof->printClauses(out, paren);
   d_satProof->printResolutions(out, paren);
-  paren <<")))\n;;";
+  paren <<")))))\n;;";
   out << paren.str();
   out << "\n";
 }
