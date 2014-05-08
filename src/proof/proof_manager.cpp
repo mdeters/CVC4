@@ -226,23 +226,29 @@ void ProofManager::printProof(std::ostream& os, TNode n) {
   context::UserContext fakeContext;
   ProofOutputChannel oc;
   theory::Valuation v(NULL);
-  //theory::uf::TheoryUF uf(&fakeContext, &fakeContext, oc, v, d_logic);
-  theory::arrays::TheoryArrays uf(&fakeContext, &fakeContext, oc, v, d_logic);
-  uf.produceProofs();
-  MyPreRegisterVisitor preRegVisitor(&uf);
+  theory::Theory* th;
+  if(d_logic.isPure(theory::THEORY_UF)) {
+    th = new theory::uf::TheoryUF(&fakeContext, &fakeContext, oc, v, d_logic);
+  } else if(d_logic.isPure(theory::THEORY_ARRAY)) {
+    th = new theory::arrays::TheoryArrays(&fakeContext, &fakeContext, oc, v, d_logic);
+  } else {
+    InternalError(std::string("can't generate theory-proof for ") + d_logic.getLogicString());
+  }
+  th->produceProofs();
+  MyPreRegisterVisitor preRegVisitor(th);
   for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
     Debug("mgd") << "preregistering and asserting " << (*i).negate() << std::endl;
     NodeVisitor<MyPreRegisterVisitor>::run(preRegVisitor, *i);
-    uf.assertFact(*i, false);
+    th->assertFact(*i, false);
   }
-  uf.check(theory::Theory::EFFORT_FULL);
+  th->check(theory::Theory::EFFORT_FULL);
   if(oc.d_conflict.isNull()) {
     Debug("mgd") << "conflict is null" << std::endl;
     Assert(!oc.d_lemma.isNull());
     Debug("mgd") << "++ but got lemma: " << oc.d_lemma << std::endl;
     Debug("mgd") << "asserting " << oc.d_lemma[1].negate() << std::endl;
-    uf.assertFact(oc.d_lemma[1].negate(), false);
-    uf.check(theory::Theory::EFFORT_FULL);
+    th->assertFact(oc.d_lemma[1].negate(), false);
+    th->check(theory::Theory::EFFORT_FULL);
   }
   Debug("mgd") << "got conflict " << oc.d_conflict << std::endl
                << "and proof " << oc.d_proof << ":" << std::endl;
@@ -250,6 +256,7 @@ Debug("mgd") << "PROOF[[" << std::endl;
 ((theory::eq::EqProof*)(oc.d_proof))->debug_print("mgd");
 Debug("mgd") << "]]" << std::endl;
   oc.d_proof->toStream(os);
+  delete th;
 }
 
 void ProofManager::addClause(ClauseId id, const prop::SatClause* clause, ClauseKind kind) {
