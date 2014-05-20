@@ -1263,11 +1263,11 @@ str[std::string& s, bool fsmtlib]
     { s = AntlrInput::tokenText($STRING_LITERAL);
       /* strip off the quotes */
       s = s.substr(1, s.size() - 2);
-	  for(size_t i=0; i<s.size(); i++) {
-		if((unsigned)s[i] > 127) {
-			PARSER_STATE->parseError("Extended characters are not part of SMT-LIB, and they must be encoded as esacped sequences");
-		}
-	  }
+      for(size_t i=0; i<s.size(); i++) {
+        if((unsigned(s[i]) < 0x20 && unsigned(s[i]) != '\t' && unsigned(s[i]) != '\r' && unsigned(s[i]) != '\n') || unsigned(s[i]) > 0x7e) {
+          PARSER_STATE->parseError("String literals must be made up of printable characters; detected nonprinting character.  Use an escape sequence instead.");
+        }
+      }
       if(fsmtlib) {
         /* handle SMT-LIB standard escapes '\\' and '\"' */
         char* p_orig = strdup(s.c_str());
@@ -1691,11 +1691,11 @@ EQUAL_TOK         : '=';
 EXISTS_TOK        : 'exists';
 FORALL_TOK        : 'forall';
 GREATER_THAN_TOK  : '>';
-GREATER_THAN_EQUAL_TOK  : '>=';
+GREATER_THAN_EQUAL_TOK: '>=';
 IMPLIES_TOK       : '=>';
 IS_INT_TOK        : 'is_int';
 LESS_THAN_TOK     : '<';
-LESS_THAN_EQUAL_TOK     : '<=';
+LESS_THAN_EQUAL_TOK: '<=';
 MINUS_TOK         : '-';
 NOT_TOK           : 'not';
 OR_TOK            : 'or';
@@ -1705,7 +1705,6 @@ POUND_TOK         : '#';
 SELECT_TOK        : 'select';
 STAR_TOK          : '*';
 STORE_TOK         : 'store';
-// TILDE_TOK         : '~';
 TO_INT_TOK        : 'to_int';
 TO_REAL_TOK       : 'to_real';
 XOR_TOK           : 'xor';
@@ -1791,10 +1790,10 @@ EMPTYSET_TOK: 'emptyset'; // Other set theory operators are not
  * will be part of the token text.  Use the symbol[] parser rule instead.
  */
 QUOTED_SYMBOL
-  : '|' ~('|' | '\\')* '|'
+  : '|' ~('|' | '\\' | ~('\t' | '\r' | '\n' | '\u0020'..'\u007e'))* '|'
   ;
 UNTERMINATED_QUOTED_SYMBOL
-  : '|' ~('|' | '\\')*
+  : '|' ~('|' | '\\' | ~('\t' | '\r' | '\n' | '\u0020'..'\u007e'))*
   ;
 
 /**
@@ -1881,14 +1880,14 @@ BINARY_LITERAL
  * will be part of the token text.  Use the str[] parser rule instead.
  */
 STRING_LITERAL
-  : '"' ('\\' . | ~('\\' | '"'))* '"'
+  : '"' ('\\' LEGAL_CHAR | ~('\\' | '"'))* '"'
   ;
 
 /**
  * Matches the comments and ignores them
  */
 COMMENT
-  : ';' (~('\n' | '\r'))* { SKIP(); }
+  : ';' (~('\n' | '\r' | ~LEGAL_CHAR))* { SKIP(); }
   ;
 
 /**
@@ -1921,4 +1920,16 @@ fragment SYMBOL_CHAR_NOUNDERSCORE_NOATTRIBUTE
  */
 fragment SYMBOL_CHAR
   : SYMBOL_CHAR_NOUNDERSCORE_NOATTRIBUTE | '_' | '!'
+  ;
+
+/**
+ * All legal characters (in strings, escaped, in comments.. everything).
+ * For us this is 7-bit ASCII.  No extended ASCII permitted (see fall-through
+ * rule below).
+ */
+fragment LEGAL_CHAR : ('\u0000'..'\u007f');
+
+ILLEGAL_CHAR
+  : '\u0080'..'\uffff'
+    { PARSER_STATE->parseError("Bad character; please use 7-bit ASCII character input only"); }
   ;
