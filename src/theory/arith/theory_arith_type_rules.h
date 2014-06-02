@@ -45,6 +45,7 @@ public:
       throw (TypeCheckingExceptionPrivate, AssertionException) {
     switch(n.getKind()) {
       case kind::DIVISION:
+      case kind::DIVISION_TOTAL:
       case kind::INTS_DIVISION:
       case kind::INTS_DIVISION_TOTAL:
         if(Rewriter::rewrite(n).isConst()) {
@@ -52,7 +53,6 @@ public:
         }
       case kind::POW:
       case kind::INTS_MODULUS:
-      case kind::DIVISION_TOTAL:
       case kind::INTS_MODULUS_TOTAL:
         throw TypeCheckingExceptionPrivate(n, "nonlinear");
       case kind::MULT: {
@@ -62,7 +62,7 @@ public:
           while(m.getKind() == kind::UMINUS) {
             m = m[0];
           }
-          if(!m.isConst()) {
+          if(!m.isConst() && !(m.getKind() == kind::DIVISION && m[0].getKind() == kind::CONST_RATIONAL && m[0].getType().isInteger() && m[1].getKind() == kind::CONST_RATIONAL && m[1].getType().isInteger() && m[1].getConst<Rational>() != 0)) {
             if(allConstants) {
               allConstants = false;
             } else {
