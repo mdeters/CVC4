@@ -62,7 +62,7 @@ public:
           while(m.getKind() == kind::UMINUS) {
             m = m[0];
           }
-          if(!m.isConst() && !(m.getKind() == kind::DIVISION && m[0].getKind() == kind::CONST_RATIONAL && m[0].getType().isInteger() && m[1].getKind() == kind::CONST_RATIONAL && m[1].getType().isInteger() && m[1].getConst<Rational>() != 0)) {
+          if(!m.isConst() && !(m.getKind() == kind::DIVISION && ((m[0].getKind() == kind::CONST_RATIONAL && m[0].getType().isInteger()) || (m[0].getKind() == kind::UMINUS && m[0][0].getKind() == kind::CONST_RATIONAL && m[0][0].getType().isInteger())) && m[1].getKind() == kind::CONST_RATIONAL && m[1].getType().isInteger() && m[1].getConst<Rational>() != 0)) {
             if(allConstants) {
               allConstants = false;
             } else {
