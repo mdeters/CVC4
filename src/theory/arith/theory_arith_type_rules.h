@@ -51,10 +51,21 @@ public:
         if(Rewriter::rewrite(n).isConst()) {
           break;
         }
+        if(Rewriter::rewrite(n[1]).isConst()) {
+          throw TypeCheckingExceptionPrivate(n, "nonlinear: real or int div (linearizable)");
+        }
+        throw TypeCheckingExceptionPrivate(n, "nonlinear: real or int div");
       case kind::POW:
+        if(Rewriter::rewrite(n[0]).isConst() && Rewriter::rewrite(n[1]).isConst()) {
+          throw TypeCheckingExceptionPrivate(n, "nonlinear: pow (linearizable)");
+        }
+        throw TypeCheckingExceptionPrivate(n, "nonlinear: pow");
       case kind::INTS_MODULUS:
       case kind::INTS_MODULUS_TOTAL:
-        throw TypeCheckingExceptionPrivate(n, "nonlinear");
+        if(Rewriter::rewrite(n[1]).isConst()) {
+          throw TypeCheckingExceptionPrivate(n, "nonlinear: mod (linearizable)");
+        }
+        throw TypeCheckingExceptionPrivate(n, "nonlinear: mod");
       case kind::MULT: {
         bool allConstants = true;
         for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
@@ -66,7 +77,22 @@ public:
             if(allConstants) {
               allConstants = false;
             } else {
-              throw TypeCheckingExceptionPrivate(n, "nonlinear");
+              allConstants = true;
+              for(TNode::iterator i = n.begin(); i != n.end(); ++i) {
+                TNode m = *i;
+                while(m.getKind() == kind::UMINUS) {
+                  m = m[0];
+                }
+                m = Rewriter::rewrite(m);
+                if(!m.isConst() && !(m.getKind() == kind::DIVISION && ((m[0].getKind() == kind::CONST_RATIONAL && m[0].getType().isInteger()) || (m[0].getKind() == kind::UMINUS && m[0][0].getKind() == kind::CONST_RATIONAL && m[0][0].getType().isInteger())) && m[1].getKind() == kind::CONST_RATIONAL && m[1].getType().isInteger() && m[1].getConst<Rational>() != 0)) {
+                  if(allConstants) {
+                    allConstants = false;
+                  } else {
+                    throw TypeCheckingExceptionPrivate(n, "nonlinear: mult");
+                  }
+                }
+              }
+              throw TypeCheckingExceptionPrivate(n, "nonlinear: mult (linearizable)");
             }
           }
         }
