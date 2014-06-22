@@ -37,7 +37,7 @@ namespace ast {
 void AstPrinter::toStream(std::ostream& out, TNode n,
                           int toDepth, bool types, size_t dag) const throw() {
   if(dag != 0) {
-    DagificationVisitor dv(dag);
+    DagificationVisitor dv(dag, /* parallel-let = */ false);
     NodeVisitor<DagificationVisitor> visitor;
     visitor.run(dv, n);
     const theory::SubstitutionMap& lets = dv.getLets();
