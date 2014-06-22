@@ -41,31 +41,40 @@ namespace CVC4 {
 namespace printer {
 namespace cvc {
 
+void CvcPrinter::letify(std::ostream& out, TNode n, int toDepth, bool types, size_t dag) const throw() {
+  const theory::SubstitutionMap* lets = d_dv->getLets(n);
+  if(lets != NULL && !lets->empty()) {
+    Warning() << "not doing correct LETP output in CVC4 mode yet" << std::endl;
+    out << (d_cvc3Mode ? "LET " : "LETP ");
+    bool first = true;
+    for(theory::SubstitutionMap::const_iterator i = lets->begin();
+        i != lets->end();
+        ++i) {
+      if(! first) {
+        out << ", ";
+      } else {
+        first = false;
+      }
+      toStream(out, (*i).second, toDepth, types, false);
+      out << " = ";
+      toStream(out, (*i).first, toDepth, types, false);
+    }
+    out << " IN ";
+  }
+  Node body = d_dv->getDagifiedBody(n);
+  toStream(out, body, toDepth, types, false);
+}
+
 void CvcPrinter::toStream(std::ostream& out, TNode n, int toDepth, bool types, size_t dag) const throw() {
   if(dag != 0) {
-    DagificationVisitor dv(dag);
+    d_dv = new DagificationVisitor(dag, /* parallel-let = */ !d_cvc3Mode);
     NodeVisitor<DagificationVisitor> visitor;
-    visitor.run(dv, n);
-    const theory::SubstitutionMap& lets = dv.getLets();
-    if(!lets.empty()) {
-      out << "LET ";
-      bool first = true;
-      for(theory::SubstitutionMap::const_iterator i = lets.begin();
-          i != lets.end();
-          ++i) {
-        if(! first) {
-          out << ", ";
-        } else {
-          first = false;
-        }
-        toStream(out, (*i).second, toDepth, types, false);
-        out << " = ";
-        toStream(out, (*i).first, toDepth, types, false);
-      }
-      out << " IN ";
-    }
-    Node body = dv.getDagifiedBody();
-    toStream(out, body, toDepth, types, false);
+    visitor.run(*d_dv, n);
+
+    letify(out, TNode::null(), toDepth, types, false);
+
+    delete d_dv;
+    d_dv = NULL;
   } else {
     toStream(out, n, toDepth, types, false);
   }
@@ -701,7 +710,11 @@ void CvcPrinter::toStream(std::ostream& out, TNode n, int depth, bool types, boo
       out << "(FORALL";
       toStream(out, n[0], depth, types, false);
       out << " : ";
-      toStream(out, n[1], depth, types, false);
+      if(d_dv != NULL) {
+        letify(out, n, depth, types, false);
+      } else {
+        toStream(out, n[1], depth, types, false);
+      }
       out << ')';
       // TODO: user patterns?
       return;

@@ -22,14 +22,17 @@
 #include <iostream>
 
 #include "printer/printer.h"
+#include "printer/dagification_visitor.h"
 
 namespace CVC4 {
 namespace printer {
 namespace cvc {
 
 class CvcPrinter : public CVC4::Printer {
+  mutable DagificationVisitor *d_dv;
   bool d_cvc3Mode;
 
+  void letify(std::ostream& out, TNode n, int toDepth, bool types, size_t dag) const throw();
   void toStream(std::ostream& out, TNode n, int toDepth, bool types, bool bracket) const throw();
   void toStream(std::ostream& out, const Model& m, const Command* c) const throw();
 public:

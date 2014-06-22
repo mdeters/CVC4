@@ -40,7 +40,7 @@ void AstPrinter::toStream(std::ostream& out, TNode n,
     DagificationVisitor dv(dag, /* parallel-let = */ false);
     NodeVisitor<DagificationVisitor> visitor;
     visitor.run(dv, n);
-    const theory::SubstitutionMap& lets = dv.getLets();
+    const theory::SubstitutionMap& lets = *dv.getLets(TNode::null());
     if(!lets.empty()) {
       out << "(LET ";
       bool first = true;
@@ -58,7 +58,7 @@ void AstPrinter::toStream(std::ostream& out, TNode n,
       }
       out << " IN ";
     }
-    Node body = dv.getDagifiedBody();
+    Node body = dv.getDagifiedBody(TNode::null());
     toStream(out, body, toDepth, types);
     if(!lets.empty()) {
       out << ')';

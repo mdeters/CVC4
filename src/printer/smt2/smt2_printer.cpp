@@ -46,10 +46,10 @@ static void printBvParameterizedOp(std::ostream& out, TNode n) throw();
 void Smt2Printer::toStream(std::ostream& out, TNode n,
                            int toDepth, bool types, size_t dag) const throw() {
   if(dag != 0) {
-    DagificationVisitor dv(dag);
+    DagificationVisitor dv(dag, /* parallel-let = */ true);
     NodeVisitor<DagificationVisitor> visitor;
     visitor.run(dv, n);
-    const theory::SubstitutionMap& lets = dv.getLets();
+    const theory::SubstitutionMap& lets = *dv.getLets(TNode::null());
     if(!lets.empty()) {
       theory::SubstitutionMap::const_iterator i = lets.begin();
       theory::SubstitutionMap::const_iterator i_end = lets.end();
@@ -61,7 +61,7 @@ void Smt2Printer::toStream(std::ostream& out, TNode n,
         out << ")) ";
       }
     }
-    Node body = dv.getDagifiedBody();
+    Node body = dv.getDagifiedBody(TNode::null());
     toStream(out, body, toDepth, types);
     if(!lets.empty()) {
       theory::SubstitutionMap::const_iterator i = lets.begin();

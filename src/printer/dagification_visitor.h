@@ -44,6 +44,13 @@ namespace printer {
  * let bindings can be extracted from this visitor and applied to the
  * expression.
  *
+ * The main complication is to support binders (e.g., FORALL and EXISTS).
+ * If the RHS of a let candidate contains a variable bound by one of these
+ * things, the let for that candidate has to be inserted inside the
+ * binder.  So, a number of substitutions are kept: one top-level
+ * substitution, for let candidates containing no bound variables, and
+ * (at most) one substitution for each binder.
+ *
  * This dagifier never introduces let bindings for variables, constants,
  * unary-minus exprs over variables or constants, or NOT exprs over
  * variables or constants.  This dagifier never introduces let bindings
@@ -56,6 +63,13 @@ class DagificationVisitor {
    * number of times are dagified.
    */
   const unsigned d_threshold;
+
+  /**
+   * Should the produced sequence of LET bindings assume a parallel LET
+   * semantics (in which case the LHS of the LET cannot occur in the RHS
+   * in the same level sequence).
+   */
+  const bool d_parallelLet;
 
   /**
    * The prefix for introduced let bindings.
@@ -73,6 +87,21 @@ class DagificationVisitor {
   TNode d_top;
 
   /**
+   * A set of all binders visited.
+   */
+  std::set<TNode> d_binders;
+
+  /**
+   * Type for a mapping of bound vars to their binders.
+   */
+  typedef std::hash_map<TNode, TNode, TNodeHashFunction> BoundVarMap;
+
+  /**
+   * A mapping of bound vars to their binders.
+   */
+  BoundVarMap d_boundVars;
+
+  /**
    * This class doesn't operate in a context-dependent fashion, but
    * SubstitutionMap does, so we need a context.
    */
@@ -81,7 +110,18 @@ class DagificationVisitor {
   /**
    * A map of subexprs to their newly-introduced let bindings.
    */
-  theory::SubstitutionMap* d_substitutions;
+  theory::SubstitutionMap* d_topLevelSubstitutions;
+
+  /**
+   * Type for a mapping between binders and their substitution maps.
+   */
+  typedef std::hash_map<Node, theory::SubstitutionMap*, NodeHashFunction> BinderSubstitutions;
+
+  /**
+   * Binder substitutions.  FORALL and EXISTS expressions inside the
+   * visited expression could have some LETs themselves.
+   */
+  BinderSubstitutions d_binderSubstitutions;
 
   /**
    * The current count of let bindings.  Used to build unique names
@@ -118,6 +158,15 @@ class DagificationVisitor {
    */
   std::vector<TNode> d_substNodes;
 
+  /**
+   * Find bound vars (from the outer context) occurring in n, and
+   * return the lowest-level quantifier (i.e., one with lowest node ID)
+   * that binds it.  This is used to figure out where it is safe to
+   * insert a let, since the RHS of each let-bound variable must occur
+   * within its binder.
+   */
+  TNode findBoundVarsIn(TNode n);
+
 public:
 
   /** Our visitor doesn't return anything. */
@@ -128,9 +177,11 @@ public:
    * binding prefix.
    *
    * @param threshold the threshold to apply for dagification (must be > 0)
+   * @param parallelLetSemantics should the produced LETs assume parallel
+   * let semantics?
    * @param letVarPrefix prefix for let bindings (by default, "_let_")
    */
-  DagificationVisitor(unsigned threshold, std::string letVarPrefix = "_let_");
+  DagificationVisitor(unsigned threshold, bool parallelLetSemantics, std::string letVarPrefix = "_let_");
 
   /**
    * Simple destructor, clean up memory.
@@ -161,13 +212,16 @@ public:
 
   /**
    * Get the let substitutions.
+   *
+   * @param binder pass NULL to get top-level lets, or a FORALL or EXISTS
+   * node to get the lets for the quantifier body
    */
-  const theory::SubstitutionMap& getLets();
+  const theory::SubstitutionMap* getLets(TNode binder);
 
   /**
    * Return the let-substituted expression.
    */
-  Node getDagifiedBody();
+  Node getDagifiedBody(TNode binder);
 
 };/* class DagificationVisitor */
 
