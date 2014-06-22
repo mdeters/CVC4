@@ -180,7 +180,7 @@ private:
 
 class ITESimplifier {
 public:
-  ITESimplifier(ContainsTermITEVisitor* d_containsVisitor);
+  ITESimplifier(ContainsTermITEVisitor* containsVisitor);
   ~ITESimplifier();
 
   Node simpITE(TNode assertion);
