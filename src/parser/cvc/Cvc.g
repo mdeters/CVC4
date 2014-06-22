@@ -92,6 +92,7 @@ tokens {
   INT_TOK = 'INT';
   LET_TOK = 'LET';
   MEMBER_TOK = 'IS_IN';
+  LETP_TOK = 'LETP';
   NOT_TOK = 'NOT';
   OR_TOK = 'OR';
   REAL_TOK = 'REAL';
@@ -622,11 +623,28 @@ parseCommand returns [CVC4::Command* cmd = NULL]
  * command.
  */
 command returns [CVC4::Command* cmd = NULL]
+@declarations {
+  std::string name;
+  Expr e;
+  std::vector<std::string> names;
+  std::vector<Expr> exprs;
+}
   : ( mainCommand[cmd] SEMICOLON
     | SEMICOLON
     | LET_TOK { PARSER_STATE->pushScope(); }
-      typeOrVarLetDecl[CHECK_DECLARED] ( COMMA typeOrVarLetDecl[CHECK_DECLARED] )*
+      letDeclDef ( COMMA letDeclDef )*
       IN_TOK c=command
+      { $cmd = c;
+        PARSER_STATE->popScope();
+      }
+    | LETP_TOK { PARSER_STATE->pushScope(); }
+      letDeclCollect[names,exprs] ( COMMA letDeclCollect[names,exprs] )*
+      IN_TOK
+      { for(unsigned i = 0; i < names.size(); ++i) {
+          PARSER_STATE->defineVar(names[i], exprs[i]);
+        }
+      }
+      c=command
       { $cmd = c;
         PARSER_STATE->popScope();
       }
@@ -642,11 +660,6 @@ command returns [CVC4::Command* cmd = NULL]
          << "'";
       PARSER_STATE->parseError(ss.str());
     }
-  ;
-
-typeOrVarLetDecl[CVC4::parser::DeclarationCheck check]
-options { backtrack = true; }
-  : letDecl | typeLetDecl[check]
   ;
 
 mainCommand[CVC4::Command*& cmd]
@@ -930,7 +943,7 @@ declareTypes[CVC4::Command*& cmd, const std::vector<std::string>& idList]
         // non-type variable can clash unambiguously.  Break from CVC3
         // behavior here.
         PARSER_STATE->checkDeclaration(*i, CHECK_UNDECLARED, SYM_SORT);
-        Type sort = PARSER_STATE->mkSort(*i);
+        Type sort = PARSER_STATE->mkSort(*i, true);
         Command* decl = new DeclareTypeCommand(*i, 0, sort);
         seq->addCommand(decl);
       }
@@ -1006,7 +1019,7 @@ declareVariables[CVC4::Command*& cmd, CVC4::Type& t, const std::vector<std::stri
         if(!topLevel) {
           // must be top-level; doesn't make sense to write something
           // like e.g. FORALL(x:INT = 4): [...]
-          PARSER_STATE->parseError("cannot construct a definition here; maybe you want a LET");
+          PARSER_STATE->parseError("cannot construct a definition here; maybe you want a LET or LETP");
         }
         assert(!idList.empty());
         for(std::vector<std::string>::const_iterator i = idList.begin(),
@@ -1096,6 +1109,7 @@ type[CVC4::Type& t,
   | LET_TOK { PARSER_STATE->pushScope(); }
     typeLetDecl[check] ( COMMA typeLetDecl[check] )* IN_TOK type[t,check]
     { PARSER_STATE->popScope(); }
+  | LETP_TOK { PARSER_STATE->parseError("cannot use LETP in type contexts"); }
   ;
 
 // A restrictedType is one that is not a "bare" function type (it can
@@ -1322,11 +1336,13 @@ nots returns [size_t n = 0]
   ;
 
 prefixFormula[CVC4::Expr& f]
-@init {
+@declarations {
   std::vector<std::string> ids;
   std::vector<Expr> terms;
   std::vector<Type> types;
   std::vector<Expr> bvs;
+  std::string name;
+  Expr e;
   Type t;
   Kind k;
   Expr ipl;
@@ -1358,12 +1374,21 @@ prefixFormula[CVC4::Expr& f]
       f = MK_EXPR(k, terms);
     }
 
-   /* lets: letDecl defines the variables and functionss, we just
-     * manage the scopes here.  NOTE that LET in the CVC language is
-     * always sequential! */
+   /* sequential lets */
   | LET_TOK { PARSER_STATE->pushScope(); }
-    letDecl ( COMMA letDecl )*
+    letDeclDef ( COMMA letDeclDef )*
     IN_TOK formula[f] { PARSER_STATE->popScope(); }
+
+   /* parallel lets */
+  | LETP_TOK { PARSER_STATE->pushScope(); assert(ids.empty() && terms.empty()); }
+    letDeclCollect[ids,terms] ( COMMA letDeclCollect[ids,terms] )*
+    IN_TOK
+    { // now define them all at once
+      for(unsigned i = 0; i < ids.size(); ++i) {
+        PARSER_STATE->defineVar(ids[i], terms[i]);
+      }
+    }
+    formula[f] { PARSER_STATE->popScope(); }
 
    /* lambda */
   | LAMBDA { PARSER_STATE->pushScope(); } LPAREN
@@ -1398,18 +1423,37 @@ instantiationPatterns[ CVC4::Expr& expr ]
 /**
  * Matches (and defines) a single LET declaration.
  */
-letDecl
-@init {
-  Expr e;
-  std::string name;
-}
+letDecl[std::string& name, CVC4::Expr& e]
   : identifier[name,CHECK_NONE,SYM_VARIABLE] EQUAL_TOK formula[e]
     { Debug("parser") << Expr::setlanguage(language::output::LANG_CVC4) << e.getType() << std::endl;
-      PARSER_STATE->defineVar(name, e);
       Debug("parser") << "LET[" << PARSER_STATE->scopeLevel() << "]: "
                       << name << std::endl
                       << " ==>" << " " << e << std::endl;
     }
+  ;
+
+/**
+ * Convenience versino of letDecl[] that defines the symbol.  Used to
+ * implement sequential lets.
+ */
+letDeclDef
+@declarations {
+  std::string name;
+  Expr e;
+}
+  : letDecl[name,e] { PARSER_STATE->defineVar(name, e); }
+  ;
+
+/**
+ * Convenience versino of letDecl[] that appends the symbols and definitions
+ * to the end of two vectors, given.  Used to implement parallel lets.
+ */
+letDeclCollect[std::vector<std::string>& names, std::vector<CVC4::Expr>& exprs]
+@declarations {
+  std::string name;
+  Expr e;
+}
+  : letDecl[name,e] { names.push_back(name); exprs.push_back(e); }
   ;
 
 booleanBinop[unsigned& op]
