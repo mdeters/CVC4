@@ -231,6 +231,10 @@ case "$am__api_version" in
 esac
 AM_CONDITIONAL([AUTOMAKE_1_11], [$automake111])
 
+AC_LANG_PUSH([C++])
+AC_LANG_COMPILER_REQUIRE
+AC_LANG_POP([C++])
+
 # Initialize libtool's configuration options.
 # we're not DLL-clean yet (i.e., don't properly use dllexport and dllimport)
 # _LT_SET_OPTION([LT_INIT],[win32-dll])
