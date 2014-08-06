@@ -88,7 +88,7 @@ void BoundedIntegers::RangeModel::assertNode(Node n) {
     }
   }else{
     Message() << "Could not find literal " << nlit << " for range " << d_range << std::endl;
-    exit(0);
+    InternalError();
   }
 }
 

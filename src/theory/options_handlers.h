@@ -41,7 +41,7 @@ inline TheoryOfMode stringToTheoryOfMode(std::string option, std::string optarg,
     return THEORY_OF_TERM_BASED;
   } else if(optarg == "help") {
     puts(theoryOfModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --theoryof-mode: `") +
                           optarg + "'.  Try --theoryof-mode help.");
@@ -51,7 +51,7 @@ inline TheoryOfMode stringToTheoryOfMode(std::string option, std::string optarg,
 inline void useTheory(std::string option, std::string optarg, SmtEngine* smt) {
   if(optarg == "help") {
     puts(useTheoryHelp);
-    exit(1);
+    throw options::OptionHelpException();
   }
   if(useTheoryValidate(optarg)) {
     std::map<std::string, bool> m = options::theoryAlternates();

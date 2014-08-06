@@ -38,7 +38,7 @@ inline void showSatSolvers(std::string option, SmtEngine* smt) {
     printf("%s", solvers[i].c_str());
   }
   printf("\n");
-  exit(0);
+  throw options::OptionHelpException();
 }
 
 }/* CVC4::prop namespace */

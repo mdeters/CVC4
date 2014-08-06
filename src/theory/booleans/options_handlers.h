@@ -51,7 +51,7 @@ inline BooleanTermConversionMode stringToBooleanTermConversionMode(std::string o
     return BOOLEAN_TERM_CONVERT_NATIVE;
   } else if(optarg ==  "help") {
     puts(booleanTermConversionModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --boolean-term-conversion-mode: `") +
                           optarg + "'.  Try --boolean-term-conversion-mode help.");

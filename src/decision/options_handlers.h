@@ -50,7 +50,7 @@ inline DecisionMode stringToDecisionMode(std::string option, std::string optarg,
     return DECISION_STRATEGY_JUSTIFICATION;
   } else if(optarg == "help") {
     puts(decisionModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --decision: `") +
                           optarg + "'.  Try --decision help.");

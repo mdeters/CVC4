@@ -70,7 +70,7 @@ inline void showConfiguration(std::string option, SmtEngine* smt) {
   printf("abc        : %s\n", Configuration::isBuiltWithAbc() ? "yes" : "no");
   printf("readline   : %s\n", Configuration::isBuiltWithReadline() ? "yes" : "no");
   printf("tls        : %s\n", Configuration::isBuiltWithTlsSupport() ? "yes" : "no");
-  exit(0);
+  throw options::OptionHelpException();
 }
 
 inline void showDebugTags(std::string option, SmtEngine* smt) {
@@ -87,7 +87,7 @@ inline void showDebugTags(std::string option, SmtEngine* smt) {
   } else {
     throw OptionException("debug tags not available in non-tracing builds");
   }
-  exit(0);
+  throw options::OptionHelpException();
 }
 
 inline void showTraceTags(std::string option, SmtEngine* smt) {
@@ -102,7 +102,7 @@ inline void showTraceTags(std::string option, SmtEngine* smt) {
   } else {
     throw OptionException("trace tags not available in non-tracing build");
   }
-  exit(0);
+  throw options::OptionHelpException();
 }
 
 inline void threadN(std::string option, SmtEngine* smt) {

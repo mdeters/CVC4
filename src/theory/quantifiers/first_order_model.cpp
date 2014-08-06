@@ -110,7 +110,7 @@ Node FirstOrderModel::getSomeDomainElement(TypeNode tn){
     d_rep_set.add(tn, mbt);
   }else if( d_rep_set.d_type_reps[tn].size()==0 ){
     Message() << "empty reps" << std::endl;
-    exit(0);
+    InternalError();
   }
   return d_rep_set.d_type_reps[tn][0];
 }

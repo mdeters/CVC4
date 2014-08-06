@@ -345,7 +345,7 @@ void AigBitblaster::simplifyAig() {
   addAliases(pAbc); 
   if ( Cmd_CommandExecute( pAbc, command ) ) {
     fprintf( stdout, "Cannot execute command \"%s\".\n", command );
-    exit(-1); 
+    InternalError();
   }
   abcAigNetwork = Abc_FrameReadNtk(pAbc); 
 }
@@ -430,7 +430,7 @@ void addAliases(Abc_Frame_t* pAbc) {
   for (unsigned i = 0; i < aliases.size(); ++i) {
     if ( Cmd_CommandExecute( pAbc, aliases[i].c_str() ) ) {
       fprintf( stdout, "Cannot execute command \"%s\".\n", aliases[i].c_str() );
-      exit(-1); 
+      InternalError();
     }
   }
 }

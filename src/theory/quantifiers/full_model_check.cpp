@@ -97,7 +97,7 @@ int EntryTrie::getGeneralizationIndex( FirstOrderModelFmc * m, std::vector<Node>
       for( std::map<Node,EntryTrie>::iterator it = d_child.begin(); it != d_child.end(); ++it ){
         //if( !m->isInterval( it->first ) ){
         //  std::cout << "Not an interval during getGenIndex " << it->first << std::endl;
-        //  exit( 11 );
+        //  InternalError();
         //}
         //check if it is in the range
         if( m->isInRange(inst[index], it->first )  ){
@@ -374,7 +374,7 @@ void FullModelChecker::processBuildModel(TheoryModel* m, bool fullModel){
 
         if (mbt_index==-1) {
           std::cout << "   WARNING: model basis term is not a representative!" << std::endl;
-          exit(0);
+          InternalError();
         }else{
           Trace("fmc") << "Star index for " << it->first << " is " << mbt_index << std::endl;
         }
@@ -655,7 +655,7 @@ bool FullModelChecker::doExhaustiveInstantiation( FirstOrderModel * fm, Node f, 
                 Node ev = d_quant_models[f].evaluate(fmfmc, inst);
                 if( ev==d_true ){
                   std::cout << "WARNING: instantiation was true! " << f << " " << d_quant_models[f].d_cond[i] << std::endl;
-                  exit(0);
+                  InternalError();
                 }else{
                   Trace("fmc-test-inst") << "...instantiation evaluated to false." << std::endl;
                 }

@@ -954,7 +954,7 @@ void QIntervalBuilder::processBuildModel(TheoryModel* m, bool fullModel) {
       if( it->first.isSort() ){
         if( it->second.empty() ){
           std::cout << "Empty rep for " << it->first << std::endl;
-          exit(0);
+          InternalError();
         }
         Trace("qint-model") << "Representatives for " << it->first << " : " << std::endl;
         for( unsigned i=0; i<it->second.size(); i++ ){

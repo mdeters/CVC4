@@ -402,158 +402,162 @@ std::vector<std::string> Options::parseOptions(int argc, char* main_argv[]) thro
 
   std::vector<std::string> nonOptions;
 
-  for(;;) {
-    int c = -1;
-    optopt = 0;
-    std::string option, optionarg;
-    Debug("preemptGetopt") << "top of loop, extra_optind == " << extra_optind << ", extra_argc == " << extra_argc << std::endl;
-    if((extra_optind == 0 ? 1 : extra_optind) < extra_argc) {
+  try {
+    for(;;) {
+      int c = -1;
+      optopt = 0;
+      std::string option, optionarg;
+      Debug("preemptGetopt") << "top of loop, extra_optind == " << extra_optind << ", extra_argc == " << extra_argc << std::endl;
+      if((extra_optind == 0 ? 1 : extra_optind) < extra_argc) {
 #if HAVE_DECL_OPTRESET
-      if(optind_ref != &extra_optind) {
-        optreset = 1; // on BSD getopt() (e.g. Mac OS), might need this
-      }
-#endif /* HAVE_DECL_OPTRESET */
-      old_optind = optind = extra_optind;
-      optind_ref = &extra_optind;
-      argv = extra_argv;
-      Debug("preemptGetopt") << "in preempt code, next arg is " << extra_argv[optind == 0 ? 1 : optind] << std::endl;
-      if(extra_argv[extra_optind == 0 ? 1 : extra_optind][0] != '-') {
-        InternalError("preempted args cannot give non-options command-line args (found `%s')", extra_argv[extra_optind == 0 ? 1 : extra_optind]);
-      }
-      c = getopt_long(extra_argc, extra_argv,
-                      "+:${all_modules_short_options}",
-                      cmdlineOptions, NULL);
-      Debug("preemptGetopt") << "in preempt code, c == " << c << " (`" << char(c) << "') optind == " << optind << std::endl;
-      if(optopt == 0 ||
-         ( optopt >= ${long_option_value_begin} && optopt <= ${long_option_value_end} )) {
-        // long option
-        option = argv[old_optind == 0 ? 1 : old_optind];
-        optionarg = (optarg == NULL) ? "" : optarg;
-      } else {
-        // short option
-        option = std::string("-") + char(optopt);
-        optionarg = (optarg == NULL) ? "" : optarg;
-      }
-      if(optind >= extra_argc) {
-        Debug("preemptGetopt") << "-- no more preempt args" << std::endl;
-        unsigned i = 1;
-        while(extra_argv[i] != NULL && extra_argv[i][0] != '\0') {
-          extra_argv[i][0] = '\0';
-          ++i;
+        if(optind_ref != &extra_optind) {
+          optreset = 1; // on BSD getopt() (e.g. Mac OS), might need this
         }
-        extra_argc = 1;
-        extra_optind = 0;
-      } else {
-        Debug("preemptGetopt") << "-- more preempt args" << std::endl;
-        extra_optind = optind;
-      }
-    }
-    if(c == -1) {
-#if HAVE_DECL_OPTRESET
-      if(optind_ref != &main_optind) {
-        optreset = 1; // on BSD getopt() (e.g. Mac OS), might need this
-      }
 #endif /* HAVE_DECL_OPTRESET */
-      old_optind = optind = main_optind;
-      optind_ref = &main_optind;
-      argv = main_argv;
-      if(main_optind < argc && main_argv[main_optind][0] != '-') {
-        do {
-          if(main_optind != 0) {
-            nonOptions.push_back(main_argv[main_optind]);
-          }
-          ++main_optind;
-        } while(main_optind < argc && main_argv[main_optind][0] != '-');
-        continue;
-      }
-      Debug("options") << "[ before, optind == " << optind << " ]" << std::endl;
-#if defined(__MINGW32__) || defined(__MINGW64__)
-      if(optreset == 1 && optind > 1) {
-        // on mingw, optreset will reset the optind, so we have to
-        // manually advance argc, argv
-        main_argv[optind - 1] = main_argv[0];
-        argv = main_argv += optind - 1;
-        argc -= optind - 1;
-        old_optind = optind = main_optind = 1;
-        if(argc > 0) {
-          Debug("options") << "looking at : " << argv[0] << std::endl;
+        old_optind = optind = extra_optind;
+        optind_ref = &extra_optind;
+        argv = extra_argv;
+        Debug("preemptGetopt") << "in preempt code, next arg is " << extra_argv[optind == 0 ? 1 : optind] << std::endl;
+        if(extra_argv[extra_optind == 0 ? 1 : extra_optind][0] != '-') {
+          InternalError("preempted args cannot give non-options command-line args (found `%s')", extra_argv[extra_optind == 0 ? 1 : extra_optind]);
         }
-        /*c = getopt_long(argc, main_argv,
+        c = getopt_long(extra_argc, extra_argv,
                         "+:${all_modules_short_options}",
                         cmdlineOptions, NULL);
-        Debug("options") << "pre-emptory c is " << c << " (" << char(c) << ")" << std::endl;
-        Debug("options") << "optind was reset to " << optind << std::endl;
-        optind = main_optind;
-        Debug("options") << "I restored optind to " << optind << std::endl;*/
+        Debug("preemptGetopt") << "in preempt code, c == " << c << " (`" << char(c) << "') optind == " << optind << std::endl;
+        if(optopt == 0 ||
+           ( optopt >= ${long_option_value_begin} && optopt <= ${long_option_value_end} )) {
+          // long option
+          option = argv[old_optind == 0 ? 1 : old_optind];
+          optionarg = (optarg == NULL) ? "" : optarg;
+        } else {
+          // short option
+          option = std::string("-") + char(optopt);
+          optionarg = (optarg == NULL) ? "" : optarg;
+        }
+        if(optind >= extra_argc) {
+          Debug("preemptGetopt") << "-- no more preempt args" << std::endl;
+          unsigned i = 1;
+          while(extra_argv[i] != NULL && extra_argv[i][0] != '\0') {
+            extra_argv[i][0] = '\0';
+            ++i;
+          }
+          extra_argc = 1;
+          extra_optind = 0;
+        } else {
+          Debug("preemptGetopt") << "-- more preempt args" << std::endl;
+          extra_optind = optind;
+        }
       }
-#endif /* __MINGW32__ || __MINGW64__ */
-      Debug("options") << "[ argc == " << argc << ", main_argv == " << main_argv << " ]" << std::endl;
-      c = getopt_long(argc, main_argv,
-                      "+:${all_modules_short_options}",
-                      cmdlineOptions, NULL);
-      main_optind = optind;
-      Debug("options") << "[ got " << int(c) << " (" << char(c) << ") ]" << std::endl;
-      Debug("options") << "[ next option will be at pos: " << optind << " ]" << std::endl;
       if(c == -1) {
-        Debug("options") << "done with option parsing" << std::endl;
-        break;
+#if HAVE_DECL_OPTRESET
+        if(optind_ref != &main_optind) {
+          optreset = 1; // on BSD getopt() (e.g. Mac OS), might need this
+        }
+#endif /* HAVE_DECL_OPTRESET */
+        old_optind = optind = main_optind;
+        optind_ref = &main_optind;
+        argv = main_argv;
+        if(main_optind < argc && main_argv[main_optind][0] != '-') {
+          do {
+            if(main_optind != 0) {
+              nonOptions.push_back(main_argv[main_optind]);
+            }
+            ++main_optind;
+          } while(main_optind < argc && main_argv[main_optind][0] != '-');
+          continue;
+        }
+        Debug("options") << "[ before, optind == " << optind << " ]" << std::endl;
+#if defined(__MINGW32__) || defined(__MINGW64__)
+        if(optreset == 1 && optind > 1) {
+          // on mingw, optreset will reset the optind, so we have to
+          // manually advance argc, argv
+          main_argv[optind - 1] = main_argv[0];
+          argv = main_argv += optind - 1;
+          argc -= optind - 1;
+          old_optind = optind = main_optind = 1;
+          if(argc > 0) {
+            Debug("options") << "looking at : " << argv[0] << std::endl;
+          }
+          /*c = getopt_long(argc, main_argv,
+                          "+:${all_modules_short_options}",
+                          cmdlineOptions, NULL);
+          Debug("options") << "pre-emptory c is " << c << " (" << char(c) << ")" << std::endl;
+          Debug("options") << "optind was reset to " << optind << std::endl;
+          optind = main_optind;
+          Debug("options") << "I restored optind to " << optind << std::endl;*/
+        }
+#endif /* __MINGW32__ || __MINGW64__ */
+        Debug("options") << "[ argc == " << argc << ", main_argv == " << main_argv << " ]" << std::endl;
+        c = getopt_long(argc, main_argv,
+                        "+:${all_modules_short_options}",
+                        cmdlineOptions, NULL);
+        main_optind = optind;
+        Debug("options") << "[ got " << int(c) << " (" << char(c) << ") ]" << std::endl;
+        Debug("options") << "[ next option will be at pos: " << optind << " ]" << std::endl;
+        if(c == -1) {
+          Debug("options") << "done with option parsing" << std::endl;
+          break;
+        }
+        option = argv[old_optind == 0 ? 1 : old_optind];
+        optionarg = (optarg == NULL) ? "" : optarg;
       }
-      option = argv[old_optind == 0 ? 1 : old_optind];
-      optionarg = (optarg == NULL) ? "" : optarg;
-    }
 
-    Debug("preemptGetopt") << "processing option " << c << " (`" << char(c) << "'), " << option << std::endl;
+      Debug("preemptGetopt") << "processing option " << c << " (`" << char(c) << "'), " << option << std::endl;
 
-    switch(c) {
+      switch(c) {
 ${all_modules_option_handlers}
 
 #line 511 "${template}"
 
-    case ':':
-      // This can be a long or short option, and the way to get at the
-      // name of it is different.
-      throw OptionException(std::string("option `") + option + "' missing its required argument");
+      case ':':
+        // This can be a long or short option, and the way to get at the
+        // name of it is different.
+        throw OptionException(std::string("option `") + option + "' missing its required argument");
 
-    case '?':
-    default:
-      if( ( optopt == 0 || ( optopt >= ${long_option_value_begin} && optopt <= ${long_option_value_end} ) ) &&
-          !strncmp(argv[optind - 1], "--thread", 8) &&
-          strlen(argv[optind - 1]) > 8 ) {
-        if(! isdigit(argv[optind - 1][8])) {
-          throw OptionException(std::string("can't understand option `") + option + "': expected something like --threadN=\"--option1 --option2\", where N is a nonnegative integer");
-        }
-        std::vector<std::string>& threadArgv = d_holder->threadArgv;
-        char *end;
-        long tnum = strtol(argv[optind - 1] + 8, &end, 10);
-        if(tnum < 0 || (*end != '\0' && *end != '=')) {
-          throw OptionException(std::string("can't understand option `") + option + "': expected something like --threadN=\"--option1 --option2\", where N is a nonnegative integer");
-        }
-        if(threadArgv.size() <= size_t(tnum)) {
-          threadArgv.resize(tnum + 1);
-        }
-        if(threadArgv[tnum] != "") {
-          threadArgv[tnum] += " ";
-        }
-        if(*end == '\0') { // e.g., we have --thread0 "foo"
-          if(argc <= optind) {
-            throw OptionException(std::string("option `") + option + "' missing its required argument");
+      case '?':
+      default:
+        if( ( optopt == 0 || ( optopt >= ${long_option_value_begin} && optopt <= ${long_option_value_end} ) ) &&
+            !strncmp(argv[optind - 1], "--thread", 8) &&
+            strlen(argv[optind - 1]) > 8 ) {
+          if(! isdigit(argv[optind - 1][8])) {
+            throw OptionException(std::string("can't understand option `") + option + "': expected something like --threadN=\"--option1 --option2\", where N is a nonnegative integer");
           }
-          Debug("options") << "thread " << tnum << " gets option " << argv[optind] << std::endl;
-          threadArgv[tnum] += argv[(*optind_ref)++];
-        } else { // e.g., we have --thread0="foo"
-          if(end[1] == '\0') {
-            throw OptionException(std::string("option `") + option + "' missing its required argument");
+          std::vector<std::string>& threadArgv = d_holder->threadArgv;
+          char *end;
+          long tnum = strtol(argv[optind - 1] + 8, &end, 10);
+          if(tnum < 0 || (*end != '\0' && *end != '=')) {
+            throw OptionException(std::string("can't understand option `") + option + "': expected something like --threadN=\"--option1 --option2\", where N is a nonnegative integer");
           }
-          Debug("options") << "thread " << tnum << " gets option " << (end + 1) << std::endl;
-          threadArgv[tnum] += end + 1;
+          if(threadArgv.size() <= size_t(tnum)) {
+            threadArgv.resize(tnum + 1);
+          }
+          if(threadArgv[tnum] != "") {
+            threadArgv[tnum] += " ";
+          }
+          if(*end == '\0') { // e.g., we have --thread0 "foo"
+            if(argc <= optind) {
+              throw OptionException(std::string("option `") + option + "' missing its required argument");
+            }
+            Debug("options") << "thread " << tnum << " gets option " << argv[optind] << std::endl;
+            threadArgv[tnum] += argv[(*optind_ref)++];
+          } else { // e.g., we have --thread0="foo"
+            if(end[1] == '\0') {
+              throw OptionException(std::string("option `") + option + "' missing its required argument");
+            }
+            Debug("options") << "thread " << tnum << " gets option " << (end + 1) << std::endl;
+            threadArgv[tnum] += end + 1;
+          }
+          Debug("options") << "thread " << tnum << " now has " << threadArgv[tnum] << std::endl;
+          break;
         }
-        Debug("options") << "thread " << tnum << " now has " << threadArgv[tnum] << std::endl;
-        break;
+
+        throw OptionException(std::string("can't understand option `") + option + "'"
+                              + suggestCommandLineOptions(option));
       }
-
-      throw OptionException(std::string("can't understand option `") + option + "'"
-                            + suggestCommandLineOptions(option));
     }
+  } catch(OptionHelpException&) {
+    nonOptions.clear();
   }
 
   Debug("options") << "returning " << nonOptions.size() << " non-option arguments." << std::endl;

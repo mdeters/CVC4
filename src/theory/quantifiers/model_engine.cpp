@@ -243,7 +243,7 @@ int ModelEngine::checkModel(){
             if( d_addedLemmas>10000 ){
               Debug("fmf-exit") << std::endl;
               debugPrint("fmf-exit");
-              exit( 0 );
+              InternalError();
             }
           }
           if( optOneQuantPerRound() && d_addedLemmas>0 ){

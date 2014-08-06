@@ -51,7 +51,7 @@ inline ModelFormatMode stringToModelFormatMode(std::string option, std::string o
     return MODEL_FORMAT_MODE_TABLE;
   } else if(optarg == "help") {
     puts(modelFormatHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --model-format: `") +
                           optarg + "'.  Try --model-format help.");
@@ -65,7 +65,7 @@ inline InstFormatMode stringToInstFormatMode(std::string option, std::string opt
     return INST_FORMAT_MODE_SZS;
   } else if(optarg == "help") {
     puts(instFormatHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --inst-format: `") +
                           optarg + "'.  Try --inst-format help.");

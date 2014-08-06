@@ -33,6 +33,7 @@ namespace CVC4 {
 
 namespace options {
   struct OptionsHolder;
+  class OptionHelpException;
 }/* CVC4::options namespace */
 
 class ExprStream;
@@ -146,6 +147,16 @@ public:
   SExpr getOptions() const throw();
 
 };/* class Options */
+
+namespace options {
+
+class OptionHelpException : public OptionException {
+public:
+  OptionHelpException() : OptionException("") {}
+  ~OptionHelpException() throw() {}
+};/* class OptionHelpException */
+
+}/* CVC4::options namespace */
 
 }/* CVC4 namespace */
 

@@ -74,7 +74,7 @@ inline ArithUnateLemmaMode stringToArithUnateLemmaMode(std::string option, std::
     return EQUALITY_PRESOLVE_LEMMAS;
   } else if(optarg == "help") {
     puts(arithUnateLemmasHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --unate-lemmas: `") +
                           optarg + "'.  Try --unate-lemmas help.");
@@ -92,7 +92,7 @@ inline ArithPropagationMode stringToArithPropagationMode(std::string option, std
     return BOTH_PROP;
   } else if(optarg == "help") {
     puts(propagationModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --arith-prop: `") +
                           optarg + "'.  Try --arith-prop help.");
@@ -108,7 +108,7 @@ inline ErrorSelectionRule stringToErrorSelectionRule(std::string option, std::st
     return MAXIMUM_AMOUNT;
   } else if(optarg == "help") {
     puts(errorSelectionRulesHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --heuristic-pivot-rule: `") +
                           optarg + "'.  Try --heuristic-pivot-rule help.");

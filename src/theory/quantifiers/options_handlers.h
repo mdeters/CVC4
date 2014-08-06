@@ -178,7 +178,7 @@ inline InstWhenMode stringToInstWhenMode(std::string option, std::string optarg,
     return INST_WHEN_LAST_CALL;
   } else if(optarg == "help") {
     puts(instWhenHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --inst-when: `") +
                           optarg + "'.  Try --inst-when help.");
@@ -200,7 +200,7 @@ inline LiteralMatchMode stringToLiteralMatchMode(std::string option, std::string
     return LITERAL_MATCH_EQUALITY;
   } else if(optarg ==  "help") {
     puts(literalMatchHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --literal-matching: `") +
                           optarg + "'.  Try --literal-matching help.");
@@ -222,7 +222,7 @@ inline AxiomInstMode stringToAxiomInstMode(std::string option, std::string optar
     return AXIOM_INST_MODE_PRIORITY;
   } else if(optarg ==  "help") {
     puts(axiomInstModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --axiom-inst: `") +
                           optarg + "'.  Try --axiom-inst help.");
@@ -248,7 +248,7 @@ inline MbqiMode stringToMbqiMode(std::string option, std::string optarg, SmtEngi
     return MBQI_TRUST;
   } else if(optarg == "help") {
     puts(mbqiModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --mbqi: `") +
                           optarg + "'.  Try --mbqi help.");
@@ -270,7 +270,7 @@ inline QcfWhenMode stringToQcfWhenMode(std::string option, std::string optarg, S
     return QCF_WHEN_MODE_STD_H;
   } else if(optarg ==  "help") {
     puts(qcfWhenModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --quant-cf-when: `") +
                           optarg + "'.  Try --quant-cf-when help.");
@@ -287,7 +287,7 @@ inline QcfMode stringToQcfMode(std::string option, std::string optarg, SmtEngine
     return QCF_MC;
   } else if(optarg ==  "help") {
     puts(qcfModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --quant-cf-mode: `") +
                           optarg + "'.  Try --quant-cf-mode help.");
@@ -303,7 +303,7 @@ inline UserPatMode stringToUserPatMode(std::string option, std::string optarg, S
     return USER_PAT_MODE_IGNORE;
   } else if(optarg ==  "help") {
     puts(userPatModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --user-pat: `") +
                           optarg + "'.  Try --user-pat help.");
@@ -318,7 +318,7 @@ inline TriggerSelMode stringToTriggerSelMode(std::string option, std::string opt
     return TRIGGER_SEL_MAX;
   } else if(optarg ==  "help") {
     puts(triggerSelModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --trigger-sel: `") +
                           optarg + "'.  Try --trigger-sel help.");

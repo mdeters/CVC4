@@ -238,7 +238,7 @@ inline void dumpMode(std::string option, std::string optarg, SmtEngine* smt) {
       }
     } else if(!strcmp(optargPtr, "help")) {
       puts(dumpHelp.c_str());
-      exit(1);
+      throw options::OptionHelpException();
     } else if(!strcmp(optargPtr, "bv-abstraction")) {
       Dump.on("bv-abstraction");
     } else if(!strcmp(optargPtr, "bv-algebraic")) {
@@ -283,7 +283,7 @@ inline SimplificationMode stringToSimplificationMode(std::string option, std::st
     return SIMPLIFICATION_MODE_NONE;
   } else if(optarg == "help") {
     puts(simplificationHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --simplification: `") +
                           optarg + "'.  Try --simplification help.");

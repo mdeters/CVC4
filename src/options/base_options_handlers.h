@@ -130,7 +130,7 @@ inline void addTraceTag(std::string option, std::string optarg, SmtEngine* smt) 
           printf(" %s", tags[i]);
         }
         printf("\n");
-        exit(0);
+        throw options::OptionHelpException();
       }
 
       throw OptionException(std::string("trace tag ") + optarg +
@@ -156,7 +156,7 @@ inline void addDebugTag(std::string option, std::string optarg, SmtEngine* smt) 
           printf(" %s", tags[i]);
         }
         printf("\n");
-        exit(0);
+        throw options::OptionHelpException();
       }
 
       throw OptionException(std::string("debug tag ") + optarg +

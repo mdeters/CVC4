@@ -1018,7 +1018,7 @@ void StrongSolverTheoryUF::SortModel::allocateCardinality( OutputChannel* out ){
   if( options::ufssAbortCardinality()==d_aloc_cardinality ){
     //abort here DO_THIS
     Message() << "Maximum cardinality reached." << std::endl;
-    exit( 0 );
+    InternalError();
   }else{
     if( applyTotality( d_aloc_cardinality ) ){
       //must generate new cardinality lemma term
@@ -1107,7 +1107,7 @@ int StrongSolverTheoryUF::SortModel::addSplit( Region* r, OutputChannel* out ){
       }
       if( ss==b_t ){
         Message() << "Bad split " << s << std::endl;
-        exit( 16 );
+        InternalError();
       }
     }
     if( options::sortInference()) {

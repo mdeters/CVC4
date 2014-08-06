@@ -101,7 +101,7 @@ inline BitblastMode stringToBitblastMode(std::string option, std::string optarg,
     return BITBLAST_MODE_EAGER;
   } else if(optarg == "help") {
     puts(bitblastingModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --bitblast: `") +
                           optarg + "'.  Try --bitblast=help.");
@@ -131,7 +131,7 @@ inline BvSlicerMode stringToBvSlicerMode(std::string option, std::string optarg,
     return BITVECTOR_SLICER_OFF; 
   } else if(optarg == "help") {
     puts(bitblastingModeHelp.c_str());
-    exit(1);
+    throw options::OptionHelpException();
   } else {
     throw OptionException(std::string("unknown option for --bv-eq-slicer: `") +
                           optarg + "'.  Try --bv-eq-slicer=help.");

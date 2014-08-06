@@ -583,7 +583,7 @@ bool AbsDef::construct( FirstOrderModelAbs * m, TNode q, TNode n, AbsDef * f,
     Assert( is_normalized() );
     //if( !is_normalized() ){
     //  std::cout << "NON NORMALIZED DEFINITION" << std::endl;
-    //  exit( 10 );
+    //  InternalError();
     //}
     return true;
   }else if( varChCount==1 && n.getKind()==EQUAL ){
