@@ -23,6 +23,7 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
 
 namespace CVC4 {
 namespace main {
@@ -37,6 +38,8 @@ protected:
   Options& d_options;
   StatisticsRegistry d_stats;
   Result d_result;
+  bool d_setLogic;
+  std::vector<Command*> d_decls;
 
 public:
   CommandExecutor(ExprManager &exprMgr, Options &options);

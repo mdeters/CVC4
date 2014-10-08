@@ -24,6 +24,9 @@
 #include "smt/options.h"
 #include "printer/options.h"
 
+#include "parser/parser.h"
+#include "parser/parser_builder.h"
+
 #ifndef __WIN32__
 #  include <sys/resource.h>
 #endif /* ! __WIN32__ */
@@ -89,12 +92,58 @@ void CommandExecutor::reset()
   if(d_options[options::statistics]) {
     flushStatistics(*d_options[options::err]);
   }
+  d_decls.clear();
+  d_setLogic = false;
   delete d_smtEngine;
   d_smtEngine = new SmtEngine(&d_exprMgr);
 }
 
 bool CommandExecutor::doCommandSingleton(Command* cmd)
 {
+  SetBenchmarkLogicCommand* s = dynamic_cast<SetBenchmarkLogicCommand*>(cmd);
+  if(s != NULL) {
+    d_decls.push_back(s->clone());
+    d_setLogic = true;
+  }
+  DeclarationDefinitionCommand* d = dynamic_cast<DeclarationDefinitionCommand*>(cmd);
+  if(d != NULL) {
+    d_decls.push_back(d->clone());
+  } else {
+    DatatypeDeclarationCommand* dt = dynamic_cast<DatatypeDeclarationCommand*>(cmd);
+    if(dt != NULL) {
+      d_decls.push_back(dt->clone());
+    } else {
+      CommandSequence* seq = dynamic_cast<CommandSequence*>(cmd);
+      if(seq != NULL) {
+        for(CommandSequence::iterator i = seq->begin(); i != seq->end(); ++i) {
+          s = dynamic_cast<SetBenchmarkLogicCommand*>(*i);
+          if(s != NULL) {
+            d_decls.push_back(s->clone());
+            d_setLogic = true;
+          }
+          d = dynamic_cast<DeclarationDefinitionCommand*>(*i);
+          if(d != NULL) {
+            d_decls.push_back(d->clone());
+          } else {
+            CommandSequence* seq2 = dynamic_cast<CommandSequence*>(*i);
+            if(seq2 != NULL) {
+              for(CommandSequence::iterator j = seq2->begin(); j != seq2->end(); ++j) {
+                d = dynamic_cast<DeclarationDefinitionCommand*>(*j);
+                if(d != NULL) {
+                  d_decls.push_back(d->clone());
+                }
+              }
+            }
+            dt = dynamic_cast<DatatypeDeclarationCommand*>(cmd);
+            if(dt != NULL) {
+              d_decls.push_back(dt->clone());
+            }
+          }
+        }
+      }
+    }
+  }
+
   bool status = true;
   if(d_options[options::verbosity] >= -1) {
     status = smtEngineInvoke(d_smtEngine, cmd, d_options[options::out]);

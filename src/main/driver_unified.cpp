@@ -266,8 +266,23 @@ int runCvc4(int argc, char* argv[], Options& opts) {
     // Parse and execute commands until we are done
     Command* cmd;
     bool status = true;
+    bool td = opts[options::tearDownIncremental];
+    bool inc = opts[options::incrementalSolving];
+    if(opts[options::incrementalSolving] && opts[options::unsatCores]) {
+      cmd = new SetOptionCommand("incremental", false);
+      cmd->setMuted(true);
+      pExecutor->doCommand(cmd);
+      delete cmd;
+
+      cmd = new SetOptionCommand("tear-down-incremental", true);
+      cmd->setMuted(true);
+      pExecutor->doCommand(cmd);
+      delete cmd;
+
+      inc = false, td = true;
+    }
     if(opts[options::interactive] && inputFromStdin) {
-      if(opts[options::tearDownIncremental]) {
+      if(td) {
         throw OptionException("--tear-down-incremental doesn't work in interactive mode");
       }
 #ifndef PORTFOLIO_BUILD
@@ -276,6 +291,7 @@ int runCvc4(int argc, char* argv[], Options& opts) {
         cmd->setMuted(true);
         pExecutor->doCommand(cmd);
         delete cmd;
+        inc = false;
       }
 #endif /* PORTFOLIO_BUILD */
       InteractiveShell shell(*exprMgr, opts);
@@ -300,8 +316,8 @@ int runCvc4(int argc, char* argv[], Options& opts) {
         status = pExecutor->doCommand(cmd) && status;
         delete cmd;
       }
-    } else if(opts[options::tearDownIncremental]) {
-      if(opts[options::incrementalSolving]) {
+    } else if(td) {
+      if(inc) {
         if(opts.wasSetByUser(options::incrementalSolving)) {
           throw OptionException("--tear-down-incremental incompatible with --incremental");
         }
