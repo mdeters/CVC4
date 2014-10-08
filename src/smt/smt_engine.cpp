@@ -1839,8 +1839,17 @@ bool SmtEnginePrivate::nonClausalSimplify() {
     // If in conflict, just return false
     Trace("simplify") << "SmtEnginePrivate::nonClausalSimplify(): "
                       << "conflict in non-clausal propagation" << endl;
+#warning fixme
+    Debug("cores") << "fixme1" << std::endl;
     Node falseNode = NodeManager::currentNM()->mkConst<bool>(false);
     Assert(!options::unsatCores());
+    PROOF( vector<Node> conflict = d_propagator.getConflict();
+           for(vector<Node>::iterator r = conflict.begin();
+               r != conflict.end();
+               ++r) {
+             Debug("cores") << "fixme1:" << *r << std::endl;
+             ProofManager::currentPM()->addDependence(falseNode, *r);
+           } );
     d_assertions.clear();
     d_assertions.push_back(falseNode);
     d_propagatorNeedsFinish = true;
@@ -1879,6 +1888,8 @@ bool SmtEnginePrivate::nonClausalSimplify() {
         Trace("simplify") << "SmtEnginePrivate::nonClausalSimplify(): "
                           << "conflict with "
                           << d_nonClausalLearnedLiterals[i] << endl;
+#warning fixme
+        Debug("cores") << "fixme2" << std::endl;
         Assert(!options::unsatCores());
         d_assertions.clear();
         d_assertions.push_back(NodeManager::currentNM()->mkConst<bool>(false));
@@ -1915,6 +1926,8 @@ bool SmtEnginePrivate::nonClausalSimplify() {
         Trace("simplify") << "SmtEnginePrivate::nonClausalSimplify(): "
                           << "conflict while solving "
                           << learnedLiteral << endl;
+#warning fixme
+        Debug("cores") << "fixme3" << std::endl;
         Assert(!options::unsatCores());
         d_assertions.clear();
         d_assertions.push_back(NodeManager::currentNM()->mkConst<bool>(false));
@@ -3015,7 +3028,7 @@ void SmtEnginePrivate::processAssertions() {
   Debug("smt") << " d_assertions     : " << d_assertions.size() << endl;
 
   bool noConflict = true;
-
+if(!options::unsatCores()) {
   // Unconstrained simplification
   if(options::unconstrainedSimp()) {
     dumpAssertions("pre-unconstrained-simp", d_assertions);
@@ -3030,25 +3043,17 @@ void SmtEnginePrivate::processAssertions() {
 
   dumpAssertions("pre-substitution", d_assertions);
 
-  if(options::unsatCores()) {
-    // special rewriting pass for unsat cores, since many of the passes below are skipped
+  // Apply the substitutions we already have, and normalize
+  if(!options::unsatCores()) {
+    Chat() << "applying substitutions..." << endl;
+    Trace("simplify") << "SmtEnginePrivate::nonClausalSimplify(): "
+                      << "applying substitutions" << endl;
     for (unsigned i = 0; i < d_assertions.size(); ++ i) {
-      d_assertions.replace(i, Rewriter::rewrite(d_assertions[i]));
-    }
-  } else {
-    // Apply the substitutions we already have, and normalize
-    if(!options::unsatCores()) {
-      Chat() << "applying substitutions..." << endl;
-      Trace("simplify") << "SmtEnginePrivate::nonClausalSimplify(): "
-                        << "applying substitutions" << endl;
-      for (unsigned i = 0; i < d_assertions.size(); ++ i) {
-        Trace("simplify") << "applying to " << d_assertions[i] << endl;
-        d_assertions.replace(i, Rewriter::rewrite(d_topLevelSubstitutions.apply(d_assertions[i])));
-        Trace("simplify") << "  got " << d_assertions[i] << endl;
-      }
+      Trace("simplify") << "applying to " << d_assertions[i] << endl;
+      d_assertions.replace(i, Rewriter::rewrite(d_topLevelSubstitutions.apply(d_assertions[i])));
+      Trace("simplify") << "  got " << d_assertions[i] << endl;
     }
   }
-
   dumpAssertions("post-substitution", d_assertions);
 
   // Assertions ARE guaranteed to be rewritten by this point
@@ -3140,6 +3145,11 @@ void SmtEnginePrivate::processAssertions() {
       d_pbsProcessor.applyReplacements(d_assertions.ref());
     }
   }
+} else {/* unsat-cores */
+  for (unsigned i = 0; i < d_assertions.size(); ++ i) {
+    d_assertions.replace(i, Rewriter::rewrite(d_assertions[i]));
+  }
+}
 
   dumpAssertions("pre-simplify", d_assertions);
   Chat() << "simplifying assertions..." << endl;
@@ -4020,7 +4030,7 @@ UnsatCore SmtEngine::getUnsatCore() throw(ModalException) {
     throw ModalException("Cannot get an unsat core unless immediately preceded by UNSAT/VALID response.");
   }
 
-  d_proofManager->getProof(this);// just to trigger core creation
+  delete d_proofManager->getProof(this);// just to trigger core creation
   return UnsatCore(this, d_proofManager->begin_unsat_core(), d_proofManager->end_unsat_core());
 #else /* CVC4_PROOF */
   throw ModalException("This build of CVC4 doesn't have proof support (required for unsat cores).");

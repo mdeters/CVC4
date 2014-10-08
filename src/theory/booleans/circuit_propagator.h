@@ -29,6 +29,7 @@
 #include "context/cdhashset.h"
 #include "context/cdhashmap.h"
 #include "context/cdo.h"
+#include "proof/proof.h"
 
 namespace CVC4 {
 namespace theory {
@@ -99,7 +100,7 @@ private:
   DataClearer< std::vector<TNode> > d_propagationQueueClearer;
 
   /** Are we in conflict? */
-  context::CDO<bool> d_conflict;
+  context::CDO<Node> d_conflict;
 
   /** Map of substitutions */
   std::vector<Node>& d_learnedLiterals;
@@ -123,6 +124,9 @@ private:
   // All the nodes we've visited so far
   context::CDHashSet<Node, NodeHashFunction> d_seen;
 
+  /** Assignment dependences, needed for unsat core reconstruction. */
+  std::hash_map<Node, std::vector<Node>, NodeHashFunction> d_deps;
+
   /**
    * Assignment status of each node.
    */
@@ -130,17 +134,18 @@ private:
   AssignmentMap d_state;
 
   /**
-   * Assign Node in circuit with the value and add it to the queue; note conflicts.
+   * Assign Node in circuit with the value and add it to the queue; note
+   * conflicts.
    */
-  void assignAndEnqueue(TNode n, bool value) {
+  bool assignAndEnqueue(TNode n, bool value) {
 
     Trace("circuit-prop") << "CircuitPropagator::assign(" << n << ", " << (value ? "true" : "false") << ")" << std::endl;
 
     if (n.getKind() == kind::CONST_BOOLEAN) {
       // Assigning a constant to the opposite value is dumb
       if (value != n.getConst<bool>()) {
-        d_conflict = true;
-        return;
+        d_conflict = n;
+        return true;
       }
     }
 
@@ -150,7 +155,9 @@ private:
     if(state != UNASSIGNED) {
       // If the node is already assigned we might have a conflict
       if(value != (state == ASSIGNED_TO_TRUE)) {
-        d_conflict = true;
+        d_conflict = n;
+      } else {
+        return false;
       }
     } else {
       // If unassigned, mark it as assigned
@@ -158,6 +165,45 @@ private:
       // Add for further propagation
       d_propagationQueue.push_back(n);
     }
+
+    return true;
+  }
+
+  bool assignAndEnqueue(TNode n, bool value, TNode reason) {
+    // if the assignment isn't redundant, store a reason
+    if(assignAndEnqueue(n, value)) {
+      addReason(n, reason);
+      return true;
+    }
+
+    return false;
+  }
+
+  bool assignAndEnqueue(TNode n, bool value, TNode reason1, TNode reason2) {
+    // if the assignment isn't redundant, store two reasons
+    if(assignAndEnqueue(n, value)) {
+      addReason(n, reason1);
+      addReason(n, reason2);
+      return true;
+    }
+
+    return false;
+  }
+
+  void addReason(TNode n, TNode dep) {
+    PROOF( Assert(!options::unsatCores() || !options::incrementalSolving());
+           Debug("mgd") << "n-deps-dep: " << n << " : " << dep << std::endl;
+           d_deps[n].push_back(dep); );
+  }
+
+  void addReasonsChildren(TNode n, TNode dep) {
+    PROOF( Assert(!options::unsatCores() || !options::incrementalSolving());
+           for(TNode::iterator i = dep.begin(); i != dep.end(); ++i) {
+             if(n != *i) {
+               Debug("mgd") << "n-deps-child: " << n << " : " << *i << std::endl;
+               d_deps[n].push_back(*i);
+             }
+           } );
   }
 
 public:
@@ -235,6 +281,9 @@ private:
   /** Whether to perform backward propagation */
   const bool d_backwardPropagation;
 
+  /** Assert for propagation, internal version with reason */
+  void assertTrue(TNode assertion, TNode reason);
+
 public:
   /**
    * Construct a new CircuitPropagator.
@@ -244,7 +293,7 @@ public:
     d_context(),
     d_propagationQueue(),
     d_propagationQueueClearer(&d_context, d_propagationQueue),
-    d_conflict(&d_context, false),
+    d_conflict(&d_context, Node::null()),
     d_learnedLiterals(outLearnedLiterals),
     d_learnedLiteralClearer(&d_context, outLearnedLiterals),
     d_backEdges(),
@@ -272,6 +321,11 @@ public:
    * @return true iff conflict found
    */
   bool propagate() CVC4_WARN_UNUSED_RESULT;
+
+  /**
+   * If in conflict, construct a reason.
+   */
+  std::vector<Node> getConflict();
 
   /**
    * Get the back edges of this circuit.
