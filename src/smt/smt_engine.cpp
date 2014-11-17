@@ -200,6 +200,8 @@ struct SmtEngineStatistics {
   TimerStat d_checkModelTime;
   /** time spent in checkProof() */
   TimerStat d_checkProofTime;
+  /** time spent in checkUnsatCore() */
+  TimerStat d_checkUnsatCoreTime;
   /** time spent in PropEngine::checkSat() */
   TimerStat d_solveTime;
   /** time spent in pushing/popping */
@@ -228,6 +230,7 @@ struct SmtEngineStatistics {
     d_numAssertionsPost("smt::SmtEngine::numAssertionsPostITERemoval", 0),
     d_checkModelTime("smt::SmtEngine::checkModelTime"),
     d_checkProofTime("smt::SmtEngine::checkProofTime"),
+    d_checkUnsatCoreTime("smt::SmtEngine::checkUnsatCoreTime"),
     d_solveTime("smt::SmtEngine::solveTime"),
     d_pushPopTime("smt::SmtEngine::pushPopTime"),
     d_processAssertionsTime("smt::SmtEngine::processAssertionsTime"),
@@ -251,6 +254,7 @@ struct SmtEngineStatistics {
     StatisticsRegistry::registerStat(&d_numAssertionsPost);
     StatisticsRegistry::registerStat(&d_checkModelTime);
     StatisticsRegistry::registerStat(&d_checkProofTime);
+    StatisticsRegistry::registerStat(&d_checkUnsatCoreTime);
     StatisticsRegistry::registerStat(&d_solveTime);
     StatisticsRegistry::registerStat(&d_pushPopTime);
     StatisticsRegistry::registerStat(&d_processAssertionsTime);
@@ -275,6 +279,7 @@ struct SmtEngineStatistics {
     StatisticsRegistry::unregisterStat(&d_numAssertionsPost);
     StatisticsRegistry::unregisterStat(&d_checkModelTime);
     StatisticsRegistry::unregisterStat(&d_checkProofTime);
+    StatisticsRegistry::unregisterStat(&d_checkUnsatCoreTime);
     StatisticsRegistry::unregisterStat(&d_solveTime);
     StatisticsRegistry::unregisterStat(&d_pushPopTime);
     StatisticsRegistry::unregisterStat(&d_processAssertionsTime);
@@ -3456,6 +3461,13 @@ Result SmtEngine::checkSat(const Expr& ex, bool inUnsatCore) throw(TypeCheckingE
         checkProof();
       }
     }
+    // Check that UNSAT results generate an unsat core correctly.
+    if(options::checkUnsatCores()) {
+      if(r.asSatisfiabilityResult().isSat() == Result::UNSAT) {
+        TimerStat::CodeTimer checkUnsatCoreTimer(d_stats->d_checkUnsatCoreTime);
+        checkUnsatCore();
+      }
+    }
 
     return r;
   } catch (UnsafeInterruptException& e) {
@@ -3540,6 +3552,13 @@ Result SmtEngine::query(const Expr& ex, bool inUnsatCore) throw(TypeCheckingExce
     if(r.asSatisfiabilityResult().isSat() == Result::UNSAT) {
       TimerStat::CodeTimer checkProofTimer(d_stats->d_checkProofTime);
       checkProof();
+    }
+  }
+  // Check that UNSAT results generate an unsat core correctly.
+  if(options::checkUnsatCores()) {
+    if(r.asSatisfiabilityResult().isSat() == Result::UNSAT) {
+      TimerStat::CodeTimer checkUnsatCoreTimer(d_stats->d_checkUnsatCoreTime);
+      checkUnsatCore();
     }
   }
 
@@ -3862,6 +3881,33 @@ Model* SmtEngine::getModel() throw(ModalException, UnsafeInterruptException) {
   TheoryModel* m = d_theoryEngine->getModel();
   m->d_inputName = d_filename;
   return m;
+}
+
+void SmtEngine::checkUnsatCore() {
+  Assert(options::unsatCores(), "cannot check unsat core if unsat cores are turned off");
+
+  Notice() << "SmtEngine::checkUnsatCore(): generating unsat core" << endl;
+  UnsatCore core = getUnsatCore();
+
+  SmtEngine coreChecker(d_exprManager);
+  Notice() << "SmtEngine::checkUnsatCore(): pushing core assertions (size == " << core.size() << ")" << endl;
+  for(UnsatCore::iterator i = core.begin(); i != core.end(); ++i) {
+    Notice() << "SmtEngine::checkUnsatCore(): pushing core member " << *i << endl;
+    coreChecker.assertFormula(*i);
+  }
+  const bool checkUnsatCores = options::checkUnsatCores();
+  Result r;
+  try {
+    options::checkUnsatCores.set(false);
+    r = coreChecker.checkSat();
+  } catch(...) {
+    options::checkUnsatCores.set(checkUnsatCores);
+    throw;
+  }
+  Notice() << "SmtEngine::checkUnsatCore(): result is " << r << endl;
+  if(r.asSatisfiabilityResult() != Result::UNSAT) {
+    InternalError("SmtEngine::checkUnsatCore(): produced core was satisfiable.");
+  }
 }
 
 void SmtEngine::checkModel(bool hardFailure) {

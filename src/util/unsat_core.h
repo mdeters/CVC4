@@ -50,6 +50,8 @@ public:
   /** get the smt engine that this unsat core is hooked up to */
   SmtEngine* getSmtEngine() { return d_smt; }
 
+  size_t size() const { return d_core.size(); }
+
   typedef std::vector<Expr>::const_iterator iterator;
   typedef std::vector<Expr>::const_iterator const_iterator;
 

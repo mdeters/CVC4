@@ -194,7 +194,7 @@ void ProofManager::addAssertion(Expr formula, bool inUnsatCore) {
   Debug("cores") << "assert: " << formula << std::endl;
   d_inputFormulas.insert(formula);
   d_deps[Node::fromExpr(formula)]; // empty vector of deps
-  if(inUnsatCore || options::dumpUnsatCores()) {
+  if(inUnsatCore || options::dumpUnsatCores() || options::checkUnsatCores()) {
     Debug("cores") << "adding to input core forms: " << formula << std::endl;
     d_inputCoreFormulas.insert(formula);
   }

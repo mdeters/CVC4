@@ -39,6 +39,8 @@ option dumpInstantiations --dump-instantiations bool :default false
  output instantiations of quantified formulas after every UNSAT/VALID response
 option unsatCores produce-unsat-cores --produce-unsat-cores bool :predicate CVC4::smt::proofEnabledBuild CVC4::smt::beforeSearch :predicate-include "smt/options_handlers.h"
  turn on unsat core generation
+option checkUnsatCores check-unsat-cores --check-unsat-cores bool :link --produce-unsat-cores :link-smt produce-unsat-cores :read-write
+ after UNSAT/VALID, produce and check an unsat core (expensive)
 option dumpUnsatCores --dump-unsat-cores bool :default false :link --produce-unsat-cores :link-smt produce-unsat-cores :predicate CVC4::smt::beforeSearch :predicate-include "smt/options_handlers.h"
  output unsat cores after every UNSAT/VALID response
 

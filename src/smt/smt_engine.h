@@ -261,6 +261,11 @@ class CVC4_PUBLIC SmtEngine {
   void checkProof();
 
   /**
+   * Check that an unsatisfiable core is indeed unsatisfiable.
+   */
+  void checkUnsatCore();
+
+  /**
    * Check that a generated Model (via getModel()) actually satisfies
    * all user assertions.
    */
